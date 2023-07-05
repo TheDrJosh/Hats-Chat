@@ -5,7 +5,8 @@ use tokio::fs;
 use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
 
-mod auth;
+mod api;
+mod data;
 
 #[tokio::main]
 async fn main() {
@@ -20,6 +21,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(handler))
         .route("/login", get(login))
+        .route("/partial/signup", get(partial_signup))
+        .nest("/api", api::api_routes())
         .nest_service("/assets", ServeDir::new("assets/")).fallback(not_found);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -35,9 +38,13 @@ async fn handler() -> Html<String> {
 }
 
 async fn login() -> Html<String> {
-    Html(fs::read_to_string("pages/login.html").await.unwrap())
+    Html(fs::read_to_string("pages/log-in.html").await.unwrap())
 }
 
 async fn not_found() -> Html<String> {
     Html(fs::read_to_string("pages/not_found.html").await.unwrap())
+}
+
+async fn partial_signup() -> Html<String> {
+    Html(fs::read_to_string("pages/partial/sign-up.html").await.unwrap())
 }
