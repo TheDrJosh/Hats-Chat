@@ -1,13 +1,13 @@
 <h1 class="mt-auto text-4xl font-bold tracking-tight mb-5">Log in</h1>
 <a href="/login" class="absolute left-0 top-0 m-4">&lt; back</a>
-<form class="flex flex-col mb-auto">
+<form class="flex flex-col mb-auto" hx-post="/api/auth/user/create">
     <label for="username" class="mb-1">username</label>
-    <input id="username" type="text" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
+    <input name="username" id="username" type="text" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
     <label for="email" class="mb-1">email</label>
-    <input id="email" type="text" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
+    <input name="email" id="email" type="email" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
     <label for="password" class="mt-2 mb-1">password</label>
-    <input id="password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
-    <label for="conform_password" class="mt-2 mb-1">conform password</label>
-    <input id="conform_password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
+    <input name="password" id="password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
+    <label for="confirm_password" class="mt-2 mb-1">confirm password</label>
+    <input name="confirm_password" id="confirm_password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
     <button type="submit" class="mt-7 bg-cyan-50 dark:bg-slate-400 rounded-lg">submit</button>
 </form>

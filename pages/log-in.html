@@ -17,12 +17,12 @@
 <body class="w-screen h-screen flex flex-col dark:text-white bg-cyan-600 dark:bg-slate-700">
     <div id="box" class="w-1/2 h-3/4 flex flex-col m-auto bg-cyan-400 dark:bg-slate-900 rounded-xl items-center">
         <h1 class="mt-auto text-4xl font-bold tracking-tight mb-5">Log in</h1>
-        <form class="flex flex-col">
-            <label for="username" class="mb-1">username or email</label>
-            <input id="username" type="text" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
-            <label for="password" class="mt-2 mb-1">password</label>
-            <input id="password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
-            <button type="submit" class="mt-7 mb-2 bg-cyan-50 dark:bg-slate-400 rounded-lg">submit</button>
+        <form class="flex flex-col" hx-post="/api/auth/user/login">
+            <label for="username" class="mb-1">Username or Email</label>
+            <input name="username" id="username" type="text" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
+            <label for="password" class="mt-2 mb-1">Password</label>
+            <input name="password" id="password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
+            <button type="submit" class="mt-7 mb-2 bg-cyan-50 dark:bg-slate-400 rounded-lg">Log in</button>
         </form>
         <p class="mb-auto">if you don't have an acount <a hx-get="/partial/signup" hx-target="closest #box"
                 class="active:no-u2nderline underline text-blue-500 cursor-pointer">sign up</a>

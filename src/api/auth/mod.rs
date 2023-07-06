@@ -1,4 +1,8 @@
-use axum::{Router, routing::post, Form};
+use std::collections::HashMap;
+
+use axum::{Router, routing::post, Form, response::{Html, Redirect}, body::{HttpBody, Body}};
+use http::StatusCode;
+use serde::Deserialize;
 
 pub fn auth_routes() -> Router {
     Router::new()
@@ -7,8 +11,17 @@ pub fn auth_routes() -> Router {
         .route("/user/logout", post(logout))
 }
 
-async fn create() -> () {
-    todo!()
+#[derive(Debug, Deserialize)]
+struct CreateUserForm {
+    username: String,
+    email: String,
+    password: String,
+    confirm_password: String,
+}
+
+async fn create(Form(form): Form<CreateUserForm>) -> Result<Html<String>, StatusCode> {
+    println!("{:?}", form);
+    Ok(Html(String::new()))
 }
 
 #[derive(Debug, Deserialize)]
@@ -17,11 +30,12 @@ struct LoginForm {
     password: String,
 }
 
-async fn login(Form(form): Form<LoginForm>) -> () {
+async fn login(Form(form): Form<LoginForm>) -> Result<Html<String>, StatusCode> {
+
     println!("{:?}", form);
-    todo!()
+
+    Ok(Html(String::new()))
 }
 
 async fn logout() -> () {
-    todo!()
 }
