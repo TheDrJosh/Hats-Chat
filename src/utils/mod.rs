@@ -1,0 +1,12 @@
+use http::StatusCode;
+
+
+pub trait ToServerError<T, E> {
+    fn server_eror(self) -> Result<T, StatusCode>;
+}
+
+impl<T, E> ToServerError<T, E> for Result<T, E> {
+    fn server_eror(self) -> Result<T, StatusCode> {
+        self.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}

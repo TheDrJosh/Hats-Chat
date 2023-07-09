@@ -1,5 +1,5 @@
 [package]
-name = "web-chat-server"
+name = "web-chat-app"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,12 +7,20 @@ edition = "2021"
 
 [dependencies]
 axum = "0.6.18"
-diesel = { version = "2.1.0", features = ["sqlite"] }
 http = "0.2.9"
-mime = "0.3.17"
+# sea-orm = { version = "0.11.3", features = ["macros", "sqlx-postgres", "runtime-tokio-rustls", "with-uuid", "with-json", "sqlx"] }
 serde = { version = "1.0.166", features = ["derive"] }
 tokio = { version = "1.29.1", features = ["full"] }
 tower = { version = "0.4.13", features = ["util"] }
 tower-http = { version = "0.4.1", features = ["fs", "trace"] }
-tracing = "0.1.37"
+tracing = { version = "0.1.37", features = ["log-always"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+uuid = { version = "1.4.0", features = ["v4"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "tls-rustls", "postgres"] }
+dotenvy = "0.15.7"
+anyhow = "1.0.71"
+email_address = "0.2.4"
+bcrypt = "0.15.0"
+jsonwebtoken = "8.3.0"
+chrono = { version = "0.4.26", features = ["serde"] }
+

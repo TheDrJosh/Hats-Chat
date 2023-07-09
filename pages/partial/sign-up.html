@@ -1,13 +1,19 @@
-<h1 class="mt-auto text-4xl font-bold tracking-tight mb-5">Log in</h1>
-<a href="/login" class="absolute left-0 top-0 m-4">&lt; back</a>
-<form class="flex flex-col mb-auto" hx-post="/api/auth/user/create">
-    <label for="username" class="mb-1">username</label>
-    <input name="username" id="username" type="text" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
-    <label for="email" class="mb-1">email</label>
-    <input name="email" id="email" type="email" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
-    <label for="password" class="mt-2 mb-1">password</label>
-    <input name="password" id="password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
-    <label for="confirm_password" class="mt-2 mb-1">confirm password</label>
-    <input name="confirm_password" id="confirm_password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1">
-    <button type="submit" class="mt-7 bg-cyan-50 dark:bg-slate-400 rounded-lg">submit</button>
+<h1 class="mt-auto text-4xl font-bold tracking-tight mb-5">Sign up</h1>
+<form class="flex flex-col" hx-post="/api/auth/user/create" hx-target="#box">
+    <label for="username" class="mb-1">Username</label>
+    <input name="username" id="username" type="text" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1" required>
+    {}
+    <label for="email" class="mb-1">Email</label>
+    <input name="email" id="email" type="email" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1" required>
+    {}
+    <label for="password" class="mt-2 mb-1">Password</label>
+    <input name="password" id="password" type="password" class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1" required>
+    <label for="confirm_password" class="mt-2 mb-1">Confirm password</label>
+    <input name="confirm_password" id="confirm_password" type="password"
+        class="rounded-lg bg-cyan-50 dark:bg-slate-400 p-1" required>
+    {}
+    <button type="submit" class="mt-7 bg-cyan-50 dark:bg-slate-400 rounded-lg w-1/2 self-center">submit</button>
 </form>
+<p class="mb-auto">If you have an acount <a hx-get="/login" hx-target="closest #box" hx-push-url="true"
+        class="active:no-u2nderline underline text-blue-500 cursor-pointer">log in</a>.
+</p>
