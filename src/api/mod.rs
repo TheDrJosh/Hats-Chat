@@ -1,12 +1,13 @@
-mod auth;
+pub mod auth;
 
 use axum::Router;
 use http::StatusCode;
-use sqlx::PgPool;
 
-pub fn api_routes(pool: PgPool) -> Router {
+use crate::data::app_state::AppState;
+
+pub fn api_routes() -> Router<AppState> {
     Router::new()
-        .nest("/auth", auth::auth_routes(pool))
+        .nest("/auth", auth::auth_routes())
         .fallback(not_found)
 }
 

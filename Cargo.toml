@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 axum = "0.6.18"
 http = "0.2.9"
-# sea-orm = { version = "0.11.3", features = ["macros", "sqlx-postgres", "runtime-tokio-rustls", "with-uuid", "with-json", "sqlx"] }
 serde = { version = "1.0.166", features = ["derive"] }
 tokio = { version = "1.29.1", features = ["full"] }
 tower = { version = "0.4.13", features = ["util"] }
@@ -23,4 +22,7 @@ email_address = "0.2.4"
 bcrypt = "0.15.0"
 jsonwebtoken = "8.3.0"
 chrono = { version = "0.4.26", features = ["serde"] }
+tower-cookies = { version = "0.9.0", features = ["private"] }
+cookie = "0.17.0"
+dotenvy_macro = "0.15.7"
 

@@ -1,10 +1,14 @@
-use crate::{login_partial, utils::ToServerError};
-use axum::{extract::State, response::Html, routing::post, Form, Router};
-use email_address::EmailAddress;
-use http::StatusCode;
-use jsonwebtoken::Header;
-use serde::Deserialize;
-use sqlx::PgPool;
+use axum::{routing::post, Router};
+use jsonwebtoken::{Header, TokenData};
+use tower_cookies::{Cookie, Cookies};
+
+use crate::data::app_state::AppState;
+
+mod login;
+mod logout;
+mod signup;
+
+const COOKIE_NAME: &'static str = "web_chat_app_token";
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Claim {
@@ -12,207 +16,124 @@ pub struct Claim {
     exp: usize,
 }
 
-pub fn auth_routes(pool: PgPool) -> Router {
+pub fn auth_routes() -> Router<AppState> {
     Router::new()
-        .route("/user/create", post(create))
-        .route("/user/login", post(login))
-        .route("/user/logout", post(logout))
-        .with_state(pool)
+        .route("/user/create", post(signup::signup))
+        .route("/user/login", post(login::login))
+        .route("/user/logout", post(logout::logout))
 }
 
-#[derive(Debug, Deserialize)]
-struct CreateUserForm {
+pub async fn make_jwt_token(
+    user_id: i32,
     username: String,
-    email: String,
-    password: String,
-    confirm_password: String,
-}
-
-async fn username_in_database(username: &str, pool: &PgPool) -> anyhow::Result<bool> {
-    let exists = sqlx::query!(
-        "SELECT EXISTS(SELECT username FROM users WHERE username = $1);",
-        username
-    )
-    .fetch_one(pool)
-    .await?
-    .exists
-    .unwrap_or_default();
-
-    Ok(exists)
-}
-
-async fn email_in_database(email: &str, pool: &PgPool) -> anyhow::Result<bool> {
-    let exists = sqlx::query!(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1);",
-        email
-    )
-    .fetch_one(pool)
-    .await?
-    .exists
-    .unwrap_or_default();
-    Ok(exists)
-}
-
-async fn create(
-    State(pool): State<PgPool>,
-    Form(form): Form<CreateUserForm>,
-) -> Result<Html<String>, StatusCode> {
-    // check if passwords match
-    if form.password != form.confirm_password {
-        return Ok(Html(crate::signup_partial(
-            "",
-            "",
-            "Your  passwords must match.",
-        )));
-    }
-    // check if email valid
-    if !EmailAddress::is_valid(&form.email) {
-        return Ok(Html(crate::signup_partial(
-            "",
-            "Invalid Email address.",
-            "",
-        )));
-    }
-    // check if email in database
-    if email_in_database(&form.email, &pool).await.server_eror()? {
-        return Ok(Html(crate::signup_partial("", "Email already used.", "")));
-    }
-    // chech if username in database
-    if username_in_database(&form.username, &pool)
-        .await
-        .server_eror()?
-    {
-        return Ok(Html(crate::signup_partial(
-            "Username already taken.",
-            "",
-            "",
-        )));
-    }
-
-    let password_hashed = bcrypt::hash(form.password, bcrypt::DEFAULT_COST).server_eror()?;
-
-    let user_id = sqlx::query!(
-        "INSERT INTO users(username, email, password_hash) VALUES ($1, $2, $3) RETURNING id;",
-        form.username,
-        form.email,
-        password_hashed
-    )
-    .fetch_one(&pool)
-    .await
-    .server_eror()?
-    .id;
-
-    let token = make_jwt_token(form.username).server_eror()?;
-
-    sqlx::query!(
-        "INSERT INTO auth_tokens(token, user_id) VALUES ($1, $2);",
-        token,
-        user_id,
-    )
-    .execute(&pool)
-    .await
-    .server_eror()?;
-
-    Ok(Html(format!(
-        "It worked! id: {}, token: {}",
-        user_id, token
-    )))
-}
-
-fn make_jwt_token(username: String) -> anyhow::Result<String> {
+    cookies: &Cookies,
+    state: AppState,
+) -> anyhow::Result<String> {
     let claim = Claim {
         sub: username,
         exp: (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize,
     };
 
-    let secret = dotenvy::var("JWS_SECRET")?;
-    Ok(jsonwebtoken::encode(
+    let token = jsonwebtoken::encode(
         &Header::default(),
         &claim,
-        &jsonwebtoken::EncodingKey::from_secret(secret.as_bytes()),
-    )?)
+        &jsonwebtoken::EncodingKey::from_secret(state.jws_key.as_bytes()),
+    )?;
+
+    let res = sqlx::query!(
+        "INSERT INTO auth_tokens(token, user_id) VALUES ($1, $2);",
+        &token,
+        user_id,
+    )
+    .execute(&state.pool)
+    .await?;
+
+    tracing::debug!("inserted token into database (user id: {}).", user_id);
+
+    cookies
+        .private(&state.cookie_key)
+        .add(Cookie::build(COOKIE_NAME, token.clone()).path("/").finish());
+
+    Ok(token)
 }
 
-#[derive(Debug, Deserialize)]
-struct LoginForm {
-    username: String,
-    password: String,
-}
+pub async fn logged_in(state: &AppState, cookies: &Cookies) -> anyhow::Result<Option<i32>> {
+    let private_cookies = cookies.private(&state.cookie_key);
 
-async fn login(
-    State(pool): State<PgPool>,
-    Form(form): Form<LoginForm>,
-) -> Result<Html<String>, StatusCode> {
-    tracing::debug!(
-        "request login for user ({}) with password ({}).",
-        form.username,
-        form.password
-    );
+    match private_cookies.get(COOKIE_NAME) {
+        Some(cookie_token) => {
+            tracing::debug!("found token cookie.");
 
-    match get_password_hash_from_username_or_email(&form.username, &pool)
-        .await
-        .server_eror()?
-    {
-        Some((user_id, stored_password_hash)) => {
-            tracing::debug!("found user ({}) id ({}). ", form.username, user_id);
-            let passwords_match = bcrypt::verify(form.password, &stored_password_hash)
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-            if passwords_match {
-                // TODO! redirect to / with credentails
+            let user_record_result = sqlx::query!(
+                "SELECT user_id FROM auth_tokens WHERE token = $1",
+                cookie_token.value()
+            )
+            .fetch_one(&state.pool)
+            .await;
 
-                let token = make_jwt_token(form.username).server_eror()?;
+            let user_record = match user_record_result {
+                Ok(rec) => Ok(Some(rec)),
+                Err(sqlx::Error::RowNotFound) => Ok(None),
+                Err(e) => Err(e),
+            }?
+            .map(|rec| rec.user_id);
 
-                Ok(Html(format!(
-                    "It worked: id: {}, token: {}",
-                    user_id, token
-                )))
-            } else {
-                tracing::debug!(
-                    "login atempt for user ({}) failed wrong password",
-                    form.username
-                );
-                Ok(Html(login_partial("Wrong username or password")))
+            match user_record {
+                Some(user_id) => {
+                    let username =
+                        sqlx::query!("SELECT username FROM users WHERE id = $1", user_id)
+                            .fetch_one(&state.pool)
+                            .await?
+                            .username;
+
+                    tracing::debug!(
+                        "found user in database with token. id: {}, username: {}.",
+                        user_id,
+                        &username
+                    );
+
+                    let mut validation = jsonwebtoken::Validation::default();
+                    validation.sub = Some(username);
+
+                    let res = jsonwebtoken::decode::<Claim>(
+                        cookie_token.value(),
+                        &jsonwebtoken::DecodingKey::from_secret(state.jws_key.as_bytes()),
+                        &validation,
+                    );
+                    use jsonwebtoken::errors::ErrorKind;
+                    match res {
+                        Ok(_) => {
+                            tracing::debug!("user (id: {}) is logged in.", user_id);
+
+                            Ok(Some(user_id))
+                        }
+                        Err(e) => match e.kind() {
+                            ErrorKind::ExpiredSignature | ErrorKind::InvalidSubject => {
+                                tracing::debug!(
+                                    "user (id: {}) submited invalid jwt token.",
+                                    user_id
+                                );
+
+                                private_cookies.remove(cookie_token);
+                                Ok(None)
+                            }
+                            _ => Err(e)?,
+                        },
+                    }
+                }
+                None => {
+                    tracing::debug!("token not in database.");
+
+                    private_cookies.remove(cookie_token);
+
+                    Ok(None)
+                }
             }
         }
         None => {
-            tracing::debug!("no user ({}) found", form.username);
+            tracing::debug!("didn't find token cookie.");
 
-            Ok(Html(login_partial("Wrong username or password")))
+            Ok(None)
         }
     }
 }
-
-async fn get_password_hash_from_username_or_email(
-    username: &str,
-    pool: &PgPool,
-) -> anyhow::Result<Option<(i32, String)>> {
-    if EmailAddress::is_valid(username) {
-        let rec = sqlx::query!(
-            "SELECT id, password_hash FROM users WHERE email = $1",
-            username
-        )
-        .fetch_one(pool)
-        .await;
-
-        match rec {
-            Ok(rec) => Ok(Some((rec.id, rec.password_hash))),
-            Err(sqlx::Error::RowNotFound) => Ok(None),
-            Err(e) => Err(e)?,
-        }
-    } else {
-        let rec = sqlx::query!(
-            "SELECT id, password_hash FROM users WHERE username = $1",
-            username
-        )
-        .fetch_one(pool)
-        .await;
-
-        match rec {
-            Ok(rec) => Ok(Some((rec.id, rec.password_hash))),
-            Err(sqlx::Error::RowNotFound) => Ok(None),
-            Err(e) => Err(e)?,
-        }
-    }
-}
-
-async fn logout(State(pool): State<PgPool>) -> () {}
