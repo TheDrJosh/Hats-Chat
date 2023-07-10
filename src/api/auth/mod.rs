@@ -1,8 +1,9 @@
 use axum::{routing::post, Router};
-use jsonwebtoken::{Header, TokenData};
+use cookie::time::{Duration, OffsetDateTime};
+use jsonwebtoken::Header;
 use tower_cookies::{Cookie, Cookies};
 
-use crate::data::app_state::AppState;
+use crate::{data::app_state::AppState, utils::RowOptional};
 
 mod login;
 mod logout;
@@ -40,7 +41,7 @@ pub async fn make_jwt_token(
         &jsonwebtoken::EncodingKey::from_secret(state.jws_key.as_bytes()),
     )?;
 
-    let res = sqlx::query!(
+    sqlx::query!(
         "INSERT INTO auth_tokens(token, user_id) VALUES ($1, $2);",
         &token,
         user_id,
@@ -50,9 +51,12 @@ pub async fn make_jwt_token(
 
     tracing::debug!("inserted token into database (user id: {}).", user_id);
 
-    cookies
-        .private(&state.cookie_key)
-        .add(Cookie::build(COOKIE_NAME, token.clone()).path("/").finish());
+    cookies.private(&state.cookie_key).add(
+        Cookie::build(COOKIE_NAME, token.clone())
+            .path("/")
+            .expires(OffsetDateTime::now_utc().checked_add(Duration::minutes(5)))
+            .finish(),
+    );
 
     Ok(token)
 }
@@ -64,18 +68,13 @@ pub async fn logged_in(state: &AppState, cookies: &Cookies) -> anyhow::Result<Op
         Some(cookie_token) => {
             tracing::debug!("found token cookie.");
 
-            let user_record_result = sqlx::query!(
+            let user_record = sqlx::query!(
                 "SELECT user_id FROM auth_tokens WHERE token = $1",
                 cookie_token.value()
             )
             .fetch_one(&state.pool)
-            .await;
-
-            let user_record = match user_record_result {
-                Ok(rec) => Ok(Some(rec)),
-                Err(sqlx::Error::RowNotFound) => Ok(None),
-                Err(e) => Err(e),
-            }?
+            .await
+            .optional()?
             .map(|rec| rec.user_id);
 
             match user_record {

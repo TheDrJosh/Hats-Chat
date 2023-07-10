@@ -3,13 +3,23 @@ use http::StatusCode;
 
 use crate::{data::app_state::AppState, utils::ToServerError};
 
+pub async fn main(state: AppState, user_id: i32) -> Result<Html<String>, StatusCode> {
+    let rec = sqlx::query!(
+        "SELECT username, email, display_name from users WHERE id = $1",
+        user_id
+    )
+    .fetch_one(&state.pool)
+    .await
+    .server_error()?;
 
-pub async fn main(state: AppState, user_id: i32)  -> Result<Html<String>, StatusCode> {
-    let rec = sqlx::query!("SELECT * from users WHERE id = $1", user_id).fetch_one(&state.pool).await.server_error()?;
-    let username = rec.username;
-    let email = rec.email;
-    let display_name = rec.display_name;
-    let password_hash = rec.password_hash;
+    Ok(page_template(&rec.username))
+}
 
-    Ok(Html(format!("used_id: {user_id}\nusername: {username}\nemail: {email}\ndisplay_name: {display_name:?}\npassword_hash: {password_hash}")))
+fn page_template(username: &str) -> Html<String> {
+    Html(format!(
+        include_str!("../../pages/index.html"),
+        account_name = username,
+        chat_list = "chat_list",
+        chat = "chat"
+    ))
 }

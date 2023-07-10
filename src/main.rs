@@ -68,7 +68,7 @@ async fn handler(
 ) -> Result<Html<String>, StatusCode> {
     match logged_in(&state, &cookies).await.server_error()? {
         Some(user_id) => app::main(state, user_id).await,
-        None => Ok(Html(fs::read_to_string("pages/landing_page.html").await.unwrap())),
+        None => Ok(Html(include_str!("../pages/landing_page.html").to_owned())),
     }
 }
 

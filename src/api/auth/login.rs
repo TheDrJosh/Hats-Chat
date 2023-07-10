@@ -1,16 +1,15 @@
-use axum::{
-    extract::State,
-    response::{Html, Response},
-    Form,
-};
+use axum::{extract::State, response::Html, Form};
 use email_address::EmailAddress;
-use http::{HeaderMap, HeaderValue, StatusCode};
+use http::StatusCode;
 use serde::Deserialize;
 use sqlx::PgPool;
 use tower_cookies::Cookies;
 
 use crate::{
-    api::auth::make_jwt_token, data::app_state::AppState, login_partial, utils::ToServerError,
+    api::auth::make_jwt_token,
+    data::app_state::AppState,
+    login_partial,
+    utils::{RowOptional, ToServerError},
 };
 
 #[derive(Debug, Deserialize)]
@@ -24,11 +23,7 @@ pub async fn login(
     cookies: Cookies,
     Form(form): Form<LoginForm>,
 ) -> Result<Html<String>, StatusCode> {
-    tracing::debug!(
-        "request login for user ({}) with password ({}).",
-        form.username,
-        form.password
-    );
+    tracing::debug!("request login for user ({}).", form.username,);
 
     match get_password_hash_from_username_or_email(&form.username, &state.pool)
         .await
@@ -39,8 +34,6 @@ pub async fn login(
             let passwords_match =
                 bcrypt::verify(form.password, &stored_password_hash).server_error()?;
             if passwords_match {
-                // TODO! redirect to "/" with credentails
-
                 tracing::debug!("password correct: id: {}.", user_id);
 
                 make_jwt_token(user_id, form.username, &cookies, state)
@@ -73,30 +66,22 @@ async fn get_password_hash_from_username_or_email(
     pool: &PgPool,
 ) -> anyhow::Result<Option<(i32, String)>> {
     if EmailAddress::is_valid(username) {
-        let rec = sqlx::query!(
+        Ok(sqlx::query!(
             "SELECT id, password_hash FROM users WHERE email = $1",
             username
         )
         .fetch_one(pool)
-        .await;
-
-        match rec {
-            Ok(rec) => Ok(Some((rec.id, rec.password_hash))),
-            Err(sqlx::Error::RowNotFound) => Ok(None),
-            Err(e) => Err(e)?,
-        }
+        .await
+        .optional()?
+        .map(|rec| (rec.id, rec.password_hash)))
     } else {
-        let rec = sqlx::query!(
+        Ok(sqlx::query!(
             "SELECT id, password_hash FROM users WHERE username = $1",
             username
         )
         .fetch_one(pool)
-        .await;
-
-        match rec {
-            Ok(rec) => Ok(Some((rec.id, rec.password_hash))),
-            Err(sqlx::Error::RowNotFound) => Ok(None),
-            Err(e) => Err(e)?,
-        }
+        .await
+        .optional()?
+        .map(|rec| (rec.id, rec.password_hash)))
     }
 }
