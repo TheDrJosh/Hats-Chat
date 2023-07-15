@@ -8,8 +8,7 @@ use tower_cookies::Cookies;
 use crate::{
     api::auth::make_jwt_token,
     data::app_state::AppState,
-    login_partial,
-    utils::{RowOptional, ToServerError},
+    utils::ToServerError, LogInTemplate,
 };
 
 #[derive(Debug, Deserialize)]
@@ -22,7 +21,7 @@ pub async fn login(
     State(state): State<AppState>,
     cookies: Cookies,
     Form(form): Form<LoginForm>,
-) -> Result<Html<String>, StatusCode> {
+) -> Result<Result<LogInTemplate, Html<String>>, StatusCode> {
     tracing::debug!("request login for user ({}).", form.username,);
 
     match get_password_hash_from_username_or_email(&form.username, &state.pool)
@@ -42,21 +41,21 @@ pub async fn login(
 
                 tracing::debug!("created tokens: id: {}.", user_id);
 
-                Ok(Html(
+                Ok(Err(Html(
                     "loading...\n<meta http-equiv=\"refresh\" content=\"0\" />".to_owned(),
-                ))
+                )))
             } else {
                 tracing::debug!(
                     "login atempt for user ({}) failed wrong password",
                     form.username
                 );
-                Ok(Html(login_partial("Wrong username or password")))
+                Ok(Ok(LogInTemplate::with_error("Wrong username or password".to_owned())))
             }
         }
         None => {
             tracing::debug!("no user ({}) found", form.username);
 
-            Ok(Html(login_partial("Wrong username or password")))
+            Ok(Ok(LogInTemplate::with_error("Wrong username or password".to_owned())))
         }
     }
 }
@@ -70,18 +69,16 @@ async fn get_password_hash_from_username_or_email(
             "SELECT id, password_hash FROM users WHERE email = $1",
             username
         )
-        .fetch_one(pool)
-        .await
-        .optional()?
+        .fetch_optional(pool)
+        .await?
         .map(|rec| (rec.id, rec.password_hash)))
     } else {
         Ok(sqlx::query!(
             "SELECT id, password_hash FROM users WHERE username = $1",
             username
         )
-        .fetch_one(pool)
-        .await
-        .optional()?
+        .fetch_optional(pool)
+        .await?
         .map(|rec| (rec.id, rec.password_hash)))
     }
 }

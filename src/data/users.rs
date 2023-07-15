@@ -7,6 +7,7 @@ pub async fn init_user_tables(pool: &PgPool) -> anyhow::Result<()> {
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         display_name TEXT,
+        profile_picture BYTEA,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL
     );"

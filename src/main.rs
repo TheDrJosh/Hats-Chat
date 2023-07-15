@@ -1,15 +1,17 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use api::auth::logged_in;
+use app::Base;
+use askama::Template;
 use axum::{
     extract::{Path, State},
-    response::{Html, Redirect},
+    response::{IntoResponse, Redirect},
     routing::get,
     Router,
 };
 use data::app_state::AppState;
 use http::{HeaderMap, StatusCode};
-use tokio::fs;
+use tokio::sync::watch;
 use tower_cookies::{CookieManagerLayer, Cookies, Key};
 use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
@@ -37,11 +39,15 @@ async fn main() {
     let pool = data::database_init().await.unwrap();
 
     data::init_tables(&pool).await.unwrap();
+    
+
+    let (sender, _) = watch::channel((-1, -1));
 
     let app_state = Arc::new(AppStateInner {
         pool,
         jws_key: dotenvy::var("JWS_SECRET").unwrap(),
         cookie_key: Key::generate(),
+        message_sent: sender,
     });
 
     let app = Router::new()
@@ -66,18 +72,22 @@ async fn main() {
 async fn handler(
     State(state): State<AppState>,
     cookies: Cookies,
-) -> Result<Html<String>, StatusCode> {
+) -> Result<Result<Base, LandingPageTemplate>, StatusCode> {
     match logged_in(&state, &cookies).await.server_error()? {
-        Some(user_id) => app::main(state, user_id, None).await,
-        None => Ok(Html(include_str!("../pages/landing_page.html").to_owned())),
+        Some(user_id) => Ok(Ok(app::main(state, user_id, None).await?)),
+        None => Ok(Err(LandingPageTemplate)),
     }
 }
+
+#[derive(Template)]
+#[template(path = "landing_page.html")]
+struct LandingPageTemplate;
 
 async fn handler_chat(
     Path(recipient): Path<String>,
     State(state): State<AppState>,
     cookies: Cookies,
-) -> Result<Result<Html<String>, Redirect>, StatusCode> {
+) -> Result<Result<impl IntoResponse, Redirect>, StatusCode> {
     tracing::debug!("handle chat");
     match logged_in(&state, &cookies).await.server_error()? {
         Some(user_id) => Ok(Ok(app::main(state, user_id, Some(recipient)).await?)),
@@ -89,55 +99,90 @@ async fn login(
     State(state): State<AppState>,
     headers: HeaderMap,
     cookies: Cookies,
-) -> Result<Result<Html<String>, Redirect>, StatusCode> {
+) -> Result<Result<LogInTemplate, Redirect>, StatusCode> {
     if headers
         .get("HX-Request")
         .is_some_and(|header| header == "true")
     {
-        Ok(Ok(Html(login_partial(""))))
+        Ok(Ok(LogInTemplate::default()))
     } else {
         if logged_in(&state, &cookies).await.server_error()?.is_some() {
             return Ok(Err(Redirect::to("/")));
         }
-        Ok(Ok(Html(format!(
-            include_str!("../pages/auth_template.html"),
-            login_partial("")
-        ))))
+        Ok(Ok(LogInTemplate::default()))
     }
 }
 
-pub fn login_partial(under_username: &str) -> String {
-    format!(include_str!("../pages/partial/log-in.html"), under_username)
+#[derive(Template, Default)]
+#[template(path = "auth/log-in.html")]
+pub struct LogInTemplate {
+    error: Option<String>,
+}
+
+impl LogInTemplate {
+    pub fn with_error(error: String) -> Self {
+        Self { error: Some(error) }
+    }
 }
 
 async fn signup(
     State(state): State<AppState>,
     headers: HeaderMap,
     cookies: Cookies,
-) -> Result<Result<Html<String>, Redirect>, StatusCode> {
+) -> Result<Result<SignUpTemplate, Redirect>, StatusCode> {
     if headers
         .get("HX-Request")
         .is_some_and(|header| header == "true")
     {
-        Ok(Ok(Html(signup_partial("", "", ""))))
+        return Ok(Ok(SignUpTemplate::default()));
     } else {
         if logged_in(&state, &cookies).await.server_error()?.is_some() {
             return Ok(Err(Redirect::to("/")));
+        } else {
+            return Ok(Ok(SignUpTemplate::default()));
         }
-        Ok(Ok(Html(format!(
-            include_str!("../pages/auth_template.html"),
-            signup_partial("", "", "")
-        ))))
     }
 }
 
-fn signup_partial(under_username: &str, under_email: &str, under_password_confirm: &str) -> String {
-    format!(
-        include_str!("../pages/partial/sign-up.html"),
-        under_username, under_email, under_password_confirm
-    )
+#[derive(Template, Default)]
+#[template(path = "auth/sign-up.html")]
+pub struct SignUpTemplate {
+    username_error: Option<String>,
+    email_error: Option<String>,
+    password_error: Option<String>,
+}
+impl SignUpTemplate {
+    pub fn with_username_error(error: String) -> Self {
+        Self {
+            username_error: Some(error),
+            email_error: None,
+            password_error: None,
+        }
+    }
+    pub fn with_email_error(error: String) -> Self {
+        Self {
+            username_error: None,
+            email_error: Some(error),
+            password_error: None,
+        }
+    }
+    pub fn with_password_error(error: String) -> Self {
+        Self {
+            username_error: None,
+            email_error: None,
+            password_error: Some(error),
+        }
+    }
 }
 
-async fn not_found(State(_state): State<AppState>) -> Html<String> {
-    Html(fs::read_to_string("pages/not_found.html").await.unwrap())
+async fn not_found(
+    State(_state): State<AppState>,
+    _headers: HeaderMap,
+    _cookies: Cookies,
+) -> NotFoundTemplate {
+    NotFoundTemplate
 }
+
+#[derive(Template)]
+#[template(path = "not_found.html")]
+struct NotFoundTemplate;

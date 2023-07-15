@@ -5,7 +5,7 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use tower_cookies::Cookies;
 
-use crate::{data::app_state::AppState, utils::ToServerError};
+use crate::{data::app_state::AppState, utils::ToServerError, SignUpTemplate};
 
 use super::make_jwt_token;
 
@@ -33,21 +33,17 @@ pub async fn signup(
     State(state): State<AppState>,
     cookies: Cookies,
     Form(form): Form<CreateUserForm>,
-) -> Result<Html<String>, StatusCode> {
+) -> Result<Result<SignUpTemplate, Html<String>>, StatusCode> {
     // check if passwords match
     if form.password != form.confirm_password {
-        return Ok(Html(crate::signup_partial(
-            "",
-            "",
-            "Your  passwords must match.",
+        return Ok(Ok(SignUpTemplate::with_password_error(
+            "Your  passwords must match.".to_owned(),
         )));
     }
     // check if email valid
     if !EmailAddress::is_valid(&form.email) {
-        return Ok(Html(crate::signup_partial(
-            "",
-            "Invalid Email address.",
-            "",
+        return Ok(Ok(SignUpTemplate::with_email_error(
+            "Invalid Email address.".to_owned(),
         )));
     }
     // check if email in database
@@ -55,17 +51,15 @@ pub async fn signup(
         .await
         .server_error()?
     {
-        return Ok(Html(crate::signup_partial("", "Email already used.", "")));
+        return Ok(Ok(SignUpTemplate::with_email_error("Email already used.".to_owned())));
     }
     // chech if username in database
     if username_in_database(&form.username, &state.pool)
         .await
         .server_error()?
     {
-        return Ok(Html(crate::signup_partial(
-            "Username already taken.",
-            "",
-            "",
+        return Ok(Ok(SignUpTemplate::with_username_error(
+            "Username already taken.".to_owned()
         )));
     }
 
@@ -86,9 +80,9 @@ pub async fn signup(
         .await
         .server_error()?;
 
-    Ok(Html(
+    Ok(Err(Html(
         "loading...\n<meta http-equiv=\"refresh\" content=\"0\" />".to_owned(),
-    ))
+    )))
 }
 
 async fn username_in_database(username: &str, pool: &PgPool) -> anyhow::Result<bool> {

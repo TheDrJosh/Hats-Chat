@@ -8,15 +8,11 @@ use axum::{
 };
 use futures::stream::Stream;
 use http::StatusCode;
-use sqlx::postgres::PgListener;
+
 use time::PrimitiveDateTime;
 use tower_cookies::Cookies;
 
-use crate::{
-    api::auth::logged_in,
-    data::app_state::AppState,
-    utils::{RowOptional, ToServerError},
-};
+use crate::{api::auth::logged_in, data::app_state::AppState, utils::ToServerError};
 
 pub fn chat_routes() -> Router<AppState> {
     Router::new()
@@ -38,9 +34,8 @@ async fn post_chat(
     match logged_in(&state, &cookies).await.server_error()? {
         Some(user_id) => {
             match sqlx::query!("SELECT id FROM users WHERE username = $1", recipient_name)
-                .fetch_one(&state.pool)
+                .fetch_optional(&state.pool)
                 .await
-                .optional()
                 .server_error()?
                 .map(|rec| rec.id)
             {
@@ -51,9 +46,6 @@ async fn post_chat(
                     tracing::debug!("receved message from user({user_id}) to user({recipient_id})");
 
                     sqlx::query!("INSERT INTO chat_messages(sender_id, recipient_id, msg, sent_at) VALUES ($1, $2, $3, $4);", user_id, recipient_id, form.message, timestamp).execute(&state.pool).await.server_error()?;
-                    
-
-                    sqlx::query!("SELECT pg_notify('message_added', $1)", format!("{}:{}", user_id, recipient_id)).execute(&state.pool).await.server_error()?;
 
                     Ok(StatusCode::OK)
                 }
@@ -81,32 +73,16 @@ async fn sse_chat_messages(
 
     match user_id {
         Some(user_id) => {
-            let mut listener = PgListener::connect_with(&state.pool).await.server_error()?;
-
-            listener.listen("message_added").await.server_error()?;
-          
+            let mut listener = state.message_sent.subscribe();
 
             let stream = async_stream::stream! {
                 loop {
-                    let event = listener.recv().await.unwrap();
-                    let payload = event.payload();
+                    listener.changed().await.unwrap();
+                    let payload = *listener.borrow();
 
-                    tracing::debug!("processing new message. payload({payload})");
+                    tracing::debug!("processing new message. payload({payload:?})");
 
-
-                    let splits: Vec<_> = payload
-                        .split(':')
-                        .map(|s| s.parse::<i32>().unwrap())
-                        .collect();
-
-                    if splits.len() != 2 {
-                        panic!("incorect format length: {}", splits.len())
-                    }
-
-                    let from = splits[0];
-                    let to = splits[1];
-
-                    if to == user_id && from == other_user_id {
+                    if payload == (user_id, other_user_id) || payload == (other_user_id, user_id) {
                         tracing::debug!("message valid");
                         let mut msg: Vec<_> = sqlx::query!(
                             "SELECT sender_id, msg, sent_at FROM chat_messages WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)",
@@ -120,12 +96,10 @@ async fn sse_chat_messages(
                         msg.sort_by(|(_, _, a), (_, _, b)| a.cmp(b));
 
                         let html = chat_messages_to_html(msg, user_id);
-
                         yield Ok(Event::default().event("message").data(html));
                     }
                 }
             };
-
             Ok(Sse::new(stream).keep_alive(
                 axum::response::sse::KeepAlive::new()
                     .interval(Duration::from_secs(1))
@@ -137,9 +111,11 @@ async fn sse_chat_messages(
 }
 
 fn chat_messages_to_html(msg: Vec<(i32, String, PrimitiveDateTime)>, this_user: i32) -> String {
-    msg.into_iter().map(|(sender_id, msg, time)| {
-        // let is_other = sender_id != this_user;
+    msg.into_iter()
+        .map(|(sender_id, msg, time)| {
+            // let is_other = sender_id != this_user;
 
-        format!("<li>{sender_id}:  {time}\n  {msg}</li>")
-    }).collect()
+            format!("<li>{sender_id}:  {time}\n  {msg}</li>")
+        })
+        .collect()
 }

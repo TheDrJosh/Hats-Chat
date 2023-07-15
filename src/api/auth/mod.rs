@@ -3,7 +3,7 @@ use cookie::time::{Duration, OffsetDateTime};
 use jsonwebtoken::Header;
 use tower_cookies::{Cookie, Cookies};
 
-use crate::{data::app_state::AppState, utils::RowOptional};
+use crate::data::app_state::AppState;
 
 mod login;
 mod logout;
@@ -72,9 +72,8 @@ pub async fn logged_in(state: &AppState, cookies: &Cookies) -> anyhow::Result<Op
                 "SELECT user_id FROM auth_tokens WHERE token = $1",
                 cookie_token.value()
             )
-            .fetch_one(&state.pool)
-            .await
-            .optional()?
+            .fetch_optional(&state.pool)
+            .await?
             .map(|rec| rec.user_id);
 
             match user_record {
