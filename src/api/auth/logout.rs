@@ -2,17 +2,36 @@ use axum::extract::State;
 use http::StatusCode;
 use tower_cookies::Cookies;
 
-use crate::data::app_state::AppState;
+use crate::{data::app_state::AppState, utils::ToServerError};
 
-pub async fn logout(State(state): State<AppState>, cookies: Cookies) -> StatusCode {
+use super::logged_in;
+
+pub async fn logout(
+    State(state): State<AppState>,
+    cookies: Cookies,
+) -> Result<StatusCode, StatusCode> {
     let private_cookies = cookies.private(&state.cookie_key);
 
-    match private_cookies.get("chat-web-app") {
-        Some(token) => {
-            private_cookies.remove(token);
+    let user_id = logged_in(&state, &cookies).await.server_error()?;
 
-            StatusCode::ACCEPTED
-        }
-        None => StatusCode::UNAUTHORIZED,
+    match user_id {
+        Some(user_id) => match private_cookies.get("chat-web-app") {
+            Some(token) => {
+                sqlx::query!(
+                    "DELETE FROM auth_tokens WHERE user_id = $1 AND token = $2",
+                    user_id,
+                    token.value()
+                )
+                .execute(&state.pool)
+                .await
+                .server_error()?;
+
+                private_cookies.remove(token.clone());
+
+                Ok(StatusCode::ACCEPTED)
+            }
+            None => Ok(StatusCode::UNAUTHORIZED),
+        },
+        None => Ok(StatusCode::UNAUTHORIZED),
     }
 }

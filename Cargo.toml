@@ -26,4 +26,8 @@ tower-cookies = { version = "0.9.0", features = ["private"] }
 cookie = "0.17.0"
 dotenvy_macro = "0.15.7"
 time = "0.3.23"
+tokio-stream = { version = "0.1.14", features = ["full"] }
+futures = "0.3.28"
+async-stream = "0.3.5"
+askama = { version = "0.12.0", features = ["with-axum"] }
 

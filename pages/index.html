@@ -12,6 +12,7 @@
     <script src="https://unpkg.com/htmx.org@1.9.2"
         integrity="sha384-L6OqL9pRWyyFU3+/bjdSri+iIphTN/bvYyM37tICVyOJkWZLpP2vGn6VUEXgzg6h"
         crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
 </head>
 
 <body class="w-screen h-screen flex flex-col dark:text-white">
@@ -22,7 +23,8 @@
         </div>
         <div class="flex-1"></div>
         <div class="flex flex-col">
-            <img id="profile_pic" src="/assets/default_profile.webp" class="w-12 h-12 flex-initial justify-self-end self-center mr-1" alt="">
+            <img id="profile_pic" src="/assets/default_profile.webp"
+                class="w-12 h-12 flex-initial justify-self-end self-center mr-1" alt="">
             <label for="profile_pic" class="text-center">{account_name}</label>
         </div>
     </nav>
@@ -35,13 +37,14 @@
         </aside>
 
         <div class="flex-1 bg-cyan-200 dark:bg-slate-600 flex flex-col-reverse">
-            <form class="bg-cyan-300 dark:bg-slate-500 px-5 py-3 flex flex-row" hx-post="/api/chat/bob" hx-target="#chat">
+            <form class="bg-cyan-300 dark:bg-slate-500 px-5 py-3 flex flex-row" hx-post="/api/chat/{recipient_name}"
+                hx-swap="none">
                 <input type="text" class="rounded-lg w-full bg-cyan-50 dark:bg-slate-400 p-1" name="message">
                 <button type="button"
                     class="m-1 p-1 bg-cyan-50 dark:bg-slate-400 rounded-lg whitespace-nowrap">attach-file</button>
                 <button type="submit" class="m-1 p-1 bg-cyan-50 dark:bg-slate-400 rounded-lg">send</button>
             </form>
-            <ol id="chat" class="flex flex-col-reverse m-3">
+            <ol id="chat" class="flex flex-col-reverse m-3" hx-ext="sse" sse-connect="/api/chat/event/{recipient_name}" sse-swap="message">
                 {chat}
             </ol>
         </div>

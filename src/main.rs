@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use api::auth::logged_in;
 use axum::{
-    extract::State,
+    extract::{Path, State},
     response::{Html, Redirect},
     routing::get,
     Router,
@@ -46,6 +46,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(handler))
+        .route("/:recipient", get(handler_chat))
         .route("/login", get(login))
         .route("/signup", get(signup))
         .nest("/api", api::api_routes())
@@ -67,8 +68,20 @@ async fn handler(
     cookies: Cookies,
 ) -> Result<Html<String>, StatusCode> {
     match logged_in(&state, &cookies).await.server_error()? {
-        Some(user_id) => app::main(state, user_id).await,
+        Some(user_id) => app::main(state, user_id, None).await,
         None => Ok(Html(include_str!("../pages/landing_page.html").to_owned())),
+    }
+}
+
+async fn handler_chat(
+    Path(recipient): Path<String>,
+    State(state): State<AppState>,
+    cookies: Cookies,
+) -> Result<Result<Html<String>, Redirect>, StatusCode> {
+    tracing::debug!("handle chat");
+    match logged_in(&state, &cookies).await.server_error()? {
+        Some(user_id) => Ok(Ok(app::main(state, user_id, Some(recipient)).await?)),
+        None => Ok(Err(Redirect::to("/"))),
     }
 }
 
