@@ -1,18 +1,20 @@
-use std::{convert::Infallible, time::Duration};
+use std::{collections::HashMap, convert::Infallible, time::Duration};
 
+use askama::Template;
 use axum::{
     extract::{Path, State},
     response::{sse::Event, Sse},
     routing::{get, post},
     Form, Router,
 };
-use futures::stream::Stream;
+use futures::{stream::Stream, StreamExt};
 use http::StatusCode;
 
+use sqlx::PgPool;
 use time::PrimitiveDateTime;
 use tower_cookies::Cookies;
 
-use crate::{api::auth::logged_in, data::app_state::AppState, utils::ToServerError};
+use crate::{api::auth::logged_in, data::app_state::AppState, utils::ToServerError, app::BaseInfo};
 
 pub fn chat_routes() -> Router<AppState> {
     Router::new()
@@ -46,6 +48,8 @@ async fn post_chat(
                     tracing::debug!("receved message from user({user_id}) to user({recipient_id})");
 
                     sqlx::query!("INSERT INTO chat_messages(sender_id, recipient_id, msg, sent_at) VALUES ($1, $2, $3, $4);", user_id, recipient_id, form.message, timestamp).execute(&state.pool).await.server_error()?;
+
+                    state.message_sent.send((user_id, recipient_id)).server_error()?;
 
                     Ok(StatusCode::OK)
                 }
@@ -84,22 +88,21 @@ async fn sse_chat_messages(
 
                     if payload == (user_id, other_user_id) || payload == (other_user_id, user_id) {
                         tracing::debug!("message valid");
-                        let mut msg: Vec<_> = sqlx::query!(
-                            "SELECT sender_id, msg, sent_at FROM chat_messages WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)",
-                            user_id,
-                            other_user_id
-                        )
-                        .fetch_all(&state.pool)
-                        .await
-                        .unwrap().into_iter().map(|r| (r.sender_id, r.msg, r.sent_at)).collect();
 
-                        msg.sort_by(|(_, _, a), (_, _, b)| a.cmp(b));
+                        let chat_window = ChatWindow {
+                            basic_info: BaseInfo::new(user_id, &state.pool).await.unwrap(),
+                            chat_window_info: Some(ChatWindowInfo::new(user_id, other_user_id, &state.pool).await.unwrap()),
+                        };
 
-                        let html = chat_messages_to_html(msg, user_id);
+                        let html = chat_window.to_string().replace(&['\n', '\r'], "");
+
+                        tracing::debug!("SSE responce sent to user({user_id})");
+
                         yield Ok(Event::default().event("message").data(html));
                     }
                 }
             };
+
             Ok(Sse::new(stream).keep_alive(
                 axum::response::sse::KeepAlive::new()
                     .interval(Duration::from_secs(1))
@@ -110,12 +113,54 @@ async fn sse_chat_messages(
     }
 }
 
-fn chat_messages_to_html(msg: Vec<(i32, String, PrimitiveDateTime)>, this_user: i32) -> String {
-    msg.into_iter()
-        .map(|(sender_id, msg, time)| {
-            // let is_other = sender_id != this_user;
+#[derive(Template)]
+#[template(path = "components/chat_window.html")]
+pub struct ChatWindow {
+    pub basic_info: BaseInfo,
+    pub chat_window_info: Option<ChatWindowInfo>,
+}
 
-            format!("<li>{sender_id}:  {time}\n  {msg}</li>")
+pub struct ChatWindowInfo {
+    pub messages: Vec<(i32, String, PrimitiveDateTime)>,
+    pub usernames: HashMap<i32, String>,
+    pub recipient_name: String,
+}
+
+impl ChatWindowInfo {
+    pub async fn new(user_id: i32, other_user_id: i32, pool: &PgPool) -> anyhow::Result<Self> {
+
+        tracing::debug!("retriving messages between user({user_id}) and user({other_user_id})");
+
+        let recipient_name = sqlx::query!("SELECT username FROM users WHERE id = $1", other_user_id).fetch_one(pool).await?.username;
+
+        let usernames = sqlx::query!(
+            "SELECT id, display_name, username FROM users WHERE id = $1 OR id = $2",
+            user_id,
+            other_user_id
+        )
+        .fetch(pool)
+        .map(|rec| {
+            let rec = rec.unwrap();
+            (rec.id, rec.display_name.unwrap_or(rec.username))
         })
-        .collect()
+        .collect::<HashMap<_, _>>()
+        .await;
+        let mut messages: Vec<_> = sqlx::query!(
+            "SELECT sender_id, msg, sent_at FROM chat_messages WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)",
+            user_id,
+            other_user_id
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap().into_iter().map(|r| (r.sender_id, r.msg, r.sent_at)).collect();
+
+        messages.sort_by(|(_, _, a), (_, _, b)| a.cmp(b));
+        
+
+        Ok(Self {
+            messages,
+            usernames,
+            recipient_name,
+        })
+    }
 }

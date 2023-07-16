@@ -10,7 +10,7 @@ use axum::{
     Router,
 };
 use data::app_state::AppState;
-use http::{HeaderMap, StatusCode};
+use http::{header, HeaderMap, HeaderValue, StatusCode};
 use tokio::sync::watch;
 use tower_cookies::{CookieManagerLayer, Cookies, Key};
 use tower_http::services::ServeDir;
@@ -39,7 +39,6 @@ async fn main() {
     let pool = data::database_init().await.unwrap();
 
     data::init_tables(&pool).await.unwrap();
-    
 
     let (sender, _) = watch::channel((-1, -1));
 
@@ -56,6 +55,7 @@ async fn main() {
         .route("/login", get(login))
         .route("/signup", get(signup))
         .nest("/api", api::api_routes())
+        .route("/profile_pictures/:username", get(profile_pictures))
         .nest_service("/assets", ServeDir::new("assets/"))
         .fallback(not_found)
         .with_state(app_state)
@@ -186,3 +186,40 @@ async fn not_found(
 #[derive(Template)]
 #[template(path = "not_found.html")]
 struct NotFoundTemplate;
+
+async fn profile_pictures(
+    Path(username): Path<String>,
+    State(state): State<AppState>,
+    _headers: HeaderMap,
+    _cookies: Cookies,
+) -> Result<Result<impl IntoResponse, Redirect>, StatusCode> {
+    let picture = sqlx::query!(
+        "SELECT profile_picture FROM users WHERE username = $1",
+        username
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .server_error()?
+    .map(|rec| rec.profile_picture);
+
+    match picture {
+        Some(Some(picture)) => {
+            let body = picture;
+
+            let mut headers = HeaderMap::new();
+
+            headers.append(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("image/avif;"),
+            );
+            headers.append(
+                header::CONTENT_DISPOSITION,
+                HeaderValue::from_static("attachment;"),
+            );
+
+            Ok(Ok((headers, body)))
+        }
+        Some(None) => Ok(Err(Redirect::to("/assets/default_profile.avif"))),
+        None => Err(StatusCode::NOT_FOUND),
+    }
+}
