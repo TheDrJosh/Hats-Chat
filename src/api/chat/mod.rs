@@ -14,7 +14,7 @@ use sqlx::PgPool;
 use time::PrimitiveDateTime;
 use tower_cookies::Cookies;
 
-use crate::{api::auth::logged_in, data::app_state::AppState, utils::ToServerError, app::BaseInfo};
+use crate::{api::auth::logged_in, app::BaseInfo, data::app_state::AppState, utils::{ToServerError, username::Username}};
 
 pub fn chat_routes() -> Router<AppState> {
     Router::new()
@@ -49,7 +49,10 @@ async fn post_chat(
 
                     sqlx::query!("INSERT INTO chat_messages(sender_id, recipient_id, msg, sent_at) VALUES ($1, $2, $3, $4);", user_id, recipient_id, form.message, timestamp).execute(&state.pool).await.server_error()?;
 
-                    state.message_sent.send((user_id, recipient_id)).server_error()?;
+                    state
+                        .message_sent
+                        .send((user_id, recipient_id))
+                        .server_error()?;
 
                     Ok(StatusCode::OK)
                 }
@@ -122,16 +125,19 @@ pub struct ChatWindow {
 
 pub struct ChatWindowInfo {
     pub messages: Vec<(i32, String, PrimitiveDateTime)>,
-    pub usernames: HashMap<i32, String>,
+    pub usernames: HashMap<i32, Username>,
     pub recipient_name: String,
 }
 
 impl ChatWindowInfo {
     pub async fn new(user_id: i32, other_user_id: i32, pool: &PgPool) -> anyhow::Result<Self> {
-
         tracing::debug!("retriving messages between user({user_id}) and user({other_user_id})");
 
-        let recipient_name = sqlx::query!("SELECT username FROM users WHERE id = $1", other_user_id).fetch_one(pool).await?.username;
+        let recipient_name =
+            sqlx::query!("SELECT username FROM users WHERE id = $1", other_user_id)
+                .fetch_one(pool)
+                .await?
+                .username;
 
         let usernames = sqlx::query!(
             "SELECT id, display_name, username FROM users WHERE id = $1 OR id = $2",
@@ -141,7 +147,7 @@ impl ChatWindowInfo {
         .fetch(pool)
         .map(|rec| {
             let rec = rec.unwrap();
-            (rec.id, rec.display_name.unwrap_or(rec.username))
+            (rec.id, Username::new(rec.username, rec.display_name))
         })
         .collect::<HashMap<_, _>>()
         .await;
@@ -155,7 +161,6 @@ impl ChatWindowInfo {
         .unwrap().into_iter().map(|r| (r.sender_id, r.msg, r.sent_at)).collect();
 
         messages.sort_by(|(_, _, a), (_, _, b)| a.cmp(b));
-        
 
         Ok(Self {
             messages,
@@ -164,3 +169,4 @@ impl ChatWindowInfo {
         })
     }
 }
+

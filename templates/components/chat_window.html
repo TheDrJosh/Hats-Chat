@@ -1,10 +1,17 @@
 <div id="chat_window" class="flex-1 bg-cyan-200 dark:bg-slate-600 flex flex-col overflow-hidden w-full h-full">
     {% match chat_window_info %}
     {% when Some with (chat_window_info) %}
-    <ol id="chat" class="flex flex-col-reverse m-3 overflow-auto h-fit" hx-ext="sse"
+    <ol id="chat" class="flex flex-col-reverse m-3 overflow-auto h-fit flex-1" hx-ext="sse"
         sse-connect="/api/chat/event/{{chat_window_info.recipient_name}}" sse-swap="message" hx-target="#chat_window">
         {% for (id, message, time) in chat_window_info.messages.iter().rev() %}
-        <li class="{% if id.clone() == base_info.user_id %} self-end {% endif %}">id: {{id}}<br>name: {{chat_window_info.usernames[id]}}<br>msg: {{message}}<br>time: {{time}}</li>
+        <li class="{% if id.clone() == base_info.user_id %} self-end {% endif %}">
+            <div class="w-1/2">
+                <img src="/profile_pictures/{{ chat_window_info.usernames[id].username() }}">
+                <h1>{{ chat_window_info.usernames[id].display_name() }}</h1>
+                <div>{{ message }}</div>
+                <div>{{ time }}</div>
+            </div>
+        </li>
         {% endfor %}
     </ol>
     <form class="bg-cyan-300 dark:bg-slate-500 px-5 py-3 flex flex-row"
@@ -17,5 +24,6 @@
     {% when None %}
     <h1>not in chat</h1>
     <a href="/bob">bob</a>
+    <a href="/TheDrJosh">bob</a>
     {% endmatch %}
 </div>

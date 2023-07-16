@@ -1,5 +1,7 @@
 use http::StatusCode;
 
+pub mod username;
+
 pub trait ToServerError<T, E> {
     fn server_error(self) -> Result<T, StatusCode>;
 }
