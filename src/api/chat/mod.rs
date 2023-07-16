@@ -90,7 +90,7 @@ async fn sse_chat_messages(
                         tracing::debug!("message valid");
 
                         let chat_window = ChatWindow {
-                            basic_info: BaseInfo::new(user_id, &state.pool).await.unwrap(),
+                            base_info: BaseInfo::new(user_id, &state.pool).await.unwrap(),
                             chat_window_info: Some(ChatWindowInfo::new(user_id, other_user_id, &state.pool).await.unwrap()),
                         };
 
@@ -116,7 +116,7 @@ async fn sse_chat_messages(
 #[derive(Template)]
 #[template(path = "components/chat_window.html")]
 pub struct ChatWindow {
-    pub basic_info: BaseInfo,
+    pub base_info: BaseInfo,
     pub chat_window_info: Option<ChatWindowInfo>,
 }
 

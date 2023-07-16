@@ -4,7 +4,7 @@
     <ol id="chat" class="flex flex-col-reverse m-3 overflow-auto h-fit" hx-ext="sse"
         sse-connect="/api/chat/event/{{chat_window_info.recipient_name}}" sse-swap="message" hx-target="#chat_window">
         {% for (id, message, time) in chat_window_info.messages.iter().rev() %}
-        <li>id: {{id}}<br>name: {{chat_window_info.usernames[id]}}<br>msg: {{message}}<br>time: {{time}}</li>
+        <li class="{% if id.clone() == base_info.user_id %} self-end {% endif %}">id: {{id}}<br>name: {{chat_window_info.usernames[id]}}<br>msg: {{message}}<br>time: {{time}}</li>
         {% endfor %}
     </ol>
     <form class="bg-cyan-300 dark:bg-slate-500 px-5 py-3 flex flex-row"
