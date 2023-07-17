@@ -32,14 +32,14 @@ pub async fn main(
         None => None,
     };
 
-    let friend_list = FiendListInfo::new(user_id, &state.pool)
+    let friend_list_info = FiendListInfo::new(user_id, &state.pool)
         .await
         .server_error()?;
 
     let base = Base {
         base_info,
         chat_window_info,
-        friend_list,
+        friend_list_info,
     };
 
     Ok(base)
@@ -50,7 +50,7 @@ pub async fn main(
 pub struct Base {
     pub base_info: BaseInfo,
     pub chat_window_info: Option<ChatWindowInfo>,
-    pub friend_list: FiendListInfo,
+    pub friend_list_info: FiendListInfo,
 }
 
 pub struct BaseInfo {

@@ -2,7 +2,20 @@
 
 - use docker compose
 - use tailwind theming in a color revamp
+- better light mode ^
 - use sql notify for multi node architecture
 - remove unwraps
 - formalize HATS stack
-- rename hats chat?
+- rename to hats chat?
+- make .env template
+- add settings page to manage acount
+- upload profile pictures ^
+- email conformation?
+- no chat selected screen
+- group chats
+- new messages
+- send files
+- multi line messages
+- actural friend system
+- notification system
+- switch to signed cookie instead of private ones?
