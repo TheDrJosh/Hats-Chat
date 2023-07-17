@@ -4,6 +4,10 @@ use sqlx::PgPool;
 
 use crate::{api::chat::ChatWindowInfo, data::app_state::AppState, utils::ToServerError};
 
+use self::friend_list::FiendListInfo;
+
+mod friend_list;
+
 pub async fn main(
     state: AppState,
     user_id: i32,
@@ -28,9 +32,14 @@ pub async fn main(
         None => None,
     };
 
+    let friend_list = FiendListInfo::new(user_id, &state.pool)
+        .await
+        .server_error()?;
+
     let base = Base {
         base_info,
         chat_window_info,
+        friend_list,
     };
 
     Ok(base)
@@ -41,6 +50,7 @@ pub async fn main(
 pub struct Base {
     pub base_info: BaseInfo,
     pub chat_window_info: Option<ChatWindowInfo>,
+    pub friend_list: FiendListInfo,
 }
 
 pub struct BaseInfo {
