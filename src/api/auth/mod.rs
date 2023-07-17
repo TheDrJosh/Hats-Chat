@@ -32,7 +32,7 @@ pub async fn make_jwt_token(
 ) -> anyhow::Result<String> {
     let claim = Claim {
         sub: username,
-        exp: (chrono::Utc::now() + chrono::Duration::minutes(5)).timestamp() as usize,
+        exp: (chrono::Utc::now() + chrono::Duration::minutes(30)).timestamp() as usize,
     };
 
     let token = jsonwebtoken::encode(
@@ -54,7 +54,7 @@ pub async fn make_jwt_token(
     cookies.private(&state.cookie_key).add(
         Cookie::build(COOKIE_NAME, token.clone())
             .path("/")
-            .expires(OffsetDateTime::now_utc().checked_add(Duration::minutes(5)))
+            .expires(OffsetDateTime::now_utc().checked_add(Duration::minutes(30)))
             .finish(),
     );
 

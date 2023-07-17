@@ -1,3 +1,3 @@
 # Todos
 
-- fix css issue when no messages
+- use docker compose

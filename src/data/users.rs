@@ -26,9 +26,9 @@ pub async fn init_user_tables(pool: &PgPool) -> anyhow::Result<()> {
     .await?;
 
     // can remove after fix of persistant cookie key
-    sqlx::query!("DELETE FROM auth_tokens")
-        .execute(pool)
-        .await?;
+    // sqlx::query!("DELETE FROM auth_tokens")
+    //     .execute(pool)
+    //     .await?;
 
     Ok(())
 }

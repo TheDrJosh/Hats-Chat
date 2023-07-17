@@ -41,13 +41,18 @@ async fn main() {
     data::init_tables(&pool).await.unwrap();
 
     let (sender, _) = watch::channel((-1, -1));
+    
+    let cookie_key_master = hex::decode(dotenvy::var("COOKIE_KEY").unwrap()).unwrap();
 
     let app_state = Arc::new(AppStateInner {
         pool,
         jws_key: dotenvy::var("JWS_SECRET").unwrap(),
-        cookie_key: Key::generate(),
+        cookie_key: Key::from(&cookie_key_master),
         message_sent: sender,
     });
+
+    // let m = hex::encode(app_state.cookie_key.master());
+    // tracing::debug!("{}", m);
 
     let app = Router::new()
         .route("/", get(handler))

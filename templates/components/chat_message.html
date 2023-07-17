@@ -1,0 +1,9 @@
+<li class="flex flex-row mt-5">
+    <img src="/profile_pictures/{{ chat_window_info.usernames[id].username() }}" class="w-10 h-10 self-center m-2">
+
+    <div class="flex flex-col">
+        <h1 class="mr-2">{{ chat_window_info.usernames[id].display_name() }}</h1>
+        <h2 class="text-xs text-slate-400">{{ time }}</h2>
+        <p>{{ message }}</p>
+    </div>
+</li>
