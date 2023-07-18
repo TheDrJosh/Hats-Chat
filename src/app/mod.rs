@@ -7,6 +7,7 @@ use crate::{api::chat::ChatWindowInfo, data::app_state::AppState, utils::ToServe
 use self::friend_list::FiendListInfo;
 
 mod friend_list;
+pub mod find_friend;
 
 pub async fn main(
     state: AppState,

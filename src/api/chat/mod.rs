@@ -97,7 +97,7 @@ async fn sse_chat_messages(
                             chat_window_info: Some(ChatWindowInfo::new(user_id, other_user_id, &state.pool).await.unwrap()),
                         };
 
-                        let html = chat_window.to_string().replace(&['\n', '\r'], "");
+                        let html = chat_window.render().unwrap().replace(&['\n', '\r'], "");
 
                         tracing::debug!("SSE responce sent to user({user_id})");
 

@@ -6,7 +6,7 @@ use askama::Template;
 use axum::{
     extract::{Path, State},
     response::{IntoResponse, Redirect},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use data::app_state::AppState;
@@ -17,7 +17,7 @@ use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
 use utils::ToServerError;
 
-use crate::data::app_state::AppStateInner;
+use crate::{app::find_friend::{find_friend_modal, find_friend_list}, data::app_state::AppStateInner};
 
 mod api;
 mod app;
@@ -43,7 +43,7 @@ async fn main() {
     let (sender, _) = watch::channel((-1, -1));
 
     // tracing::debug!("{}", hex::encode(Key::generate().master()));
-    
+
     let cookie_key_master = hex::decode(dotenvy::var("COOKIE_KEY").unwrap()).unwrap();
 
     let app_state = Arc::new(AppStateInner {
@@ -61,9 +61,12 @@ async fn main() {
         .nest("/api", api::api_routes())
         .route("/profile_pictures/:username", get(profile_pictures))
         .nest_service("/assets", ServeDir::new("assets/"))
+        .route("/inner/modal/list", post(find_friend_list))
         .fallback(not_found)
         .with_state(app_state)
-        .layer(CookieManagerLayer::new());
+        .layer(CookieManagerLayer::new())
+        .route("/inner/empty", get(empty))
+        .route("/inner/modal", get(find_friend_modal));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("listening on {}", addr);
@@ -226,4 +229,8 @@ async fn profile_pictures(
         Some(None) => Ok(Err(Redirect::to("/assets/default_profile.avif"))),
         None => Err(StatusCode::NOT_FOUND),
     }
+}
+
+async fn empty() -> impl IntoResponse {
+    StatusCode::OK
 }
