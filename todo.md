@@ -19,3 +19,4 @@
 - actural friend system
 - notification system
 - switch to signed cookie instead of private ones?
+- refactor to better sql

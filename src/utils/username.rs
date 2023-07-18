@@ -1,3 +1,6 @@
+
+
+#[derive(Debug, Clone)]
 pub struct Username {
     username: String,
     display_name: Option<String>

@@ -1,9 +1,10 @@
-<aside id="sidebar" aria-label="Sidebar" class="bg-cyan-600 dark:bg-slate-700 flex-initial w-60 h-full overflow-auto">
-    <ul class="flex flex-col mt-1">
+<aside id="sidebar" aria-label="Sidebar" class="bg-cyan-600 dark:bg-slate-700 flex-initial w-60 h-full overflow-clip flex flex-col">
+    <ul class="flex flex-col mt-1 overflow-auto h-fit flex-1">
         {% for friend in friend_list_info.friends %}
         <li>
             <a href="/{{ friend.username() }}">
-                <div class="flex-initial p-1 m-1 rounded flex {% match chat_window_info %}{% when Some with (chat_window_info) %}{% if friend.username() == chat_window_info.recipient_name %} bg-cyan-500 dark:bg-slate-800 {% endif %} {% when None %} {% endmatch %} hover:bg-cyan-700 dark:hover:bg-slate-600">
+                <div
+                    class="flex-initial p-1 m-1 rounded flex {% match chat_window_info %}{% when Some with (chat_window_info) %}{% if friend.username() == chat_window_info.recipient_name %} bg-cyan-500 dark:bg-slate-800 {% endif %} {% when None %} {% endmatch %} hover:bg-cyan-700 dark:hover:bg-slate-600">
                     <img src="/profile_pictures/{{ friend.username() }}"
                         class="w-12 h-12 flex-initial justify-self-end self-center mr-1">
                     <h1 class="text-xl self-center ml-3">{{ friend.display_name() }}</h1>
@@ -12,4 +13,9 @@
         </li>
         {% endfor %}
     </ul>
+    <div class="bg-slate-700 w-full flex flex-col">
+        <button class="m-2 p-2 bg-cyan-50 dark:bg-slate-800 rounded-lg text-center">
+            + Add Chat
+        </button>
+    </div>
 </aside>

@@ -28,6 +28,10 @@ impl FiendListInfo {
             ))
         }
 
+        // for _ in 0..30 {
+        //     friend_names.push(friend_names[0].clone());
+        // }
+
         Ok(Self {
             friends: friend_names,
         })
@@ -75,3 +79,4 @@ pub async fn get_friends(user_id: i32, pool: &PgPool) -> anyhow::Result<Vec<i32>
 
     Ok(friends)
 }
+
