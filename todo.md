@@ -24,3 +24,4 @@
 - user HX-Refresh responce instead of \<meta> tags
 - better logging
 - add esscape to modal
+- suport file uploads with multipart forms

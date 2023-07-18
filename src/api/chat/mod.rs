@@ -14,7 +14,12 @@ use sqlx::PgPool;
 use time::PrimitiveDateTime;
 use tower_cookies::Cookies;
 
-use crate::{api::auth::logged_in, app::BaseInfo, data::app_state::AppState, utils::{ToServerError, username::Username}};
+use crate::{
+    api::auth::logged_in,
+    app::BaseInfo,
+    data::app_state::AppState,
+    utils::{username::Username, ToServerError},
+};
 
 pub fn chat_routes() -> Router<AppState> {
     Router::new()
@@ -33,6 +38,8 @@ async fn post_chat(
     cookies: Cookies,
     Form(form): Form<PostChatForm>,
 ) -> Result<StatusCode, StatusCode> {
+    tracing::debug!("post chat");
+
     match logged_in(&state, &cookies).await.server_error()? {
         Some(user_id) => {
             match sqlx::query!("SELECT id FROM users WHERE username = $1", recipient_name)
@@ -169,4 +176,3 @@ impl ChatWindowInfo {
         })
     }
 }
-

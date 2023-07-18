@@ -2,7 +2,7 @@
     <ul class="flex flex-col mt-1 overflow-auto h-fit flex-1">
         {% for friend in friend_list_info.friends %}
         <li>
-            <a href="/{{ friend.username() }}">
+            <a href="/chat/{{ friend.username() }}">
                 <div
                     class="flex-initial p-1 m-1 rounded flex {% match chat_window_info %}{% when Some with (chat_window_info) %}{% if friend.username() == chat_window_info.recipient_name %} bg-cyan-500 dark:bg-slate-800 {% endif %} {% when None %} {% endmatch %} hover:bg-cyan-700 dark:hover:bg-slate-600">
                     <img src="/profile_pictures/{{ friend.username() }}"

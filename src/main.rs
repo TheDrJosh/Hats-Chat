@@ -55,7 +55,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(handler))
-        .route("/:recipient", get(handler_chat))
+        .route("/chat/:recipient", get(handler_chat))
         .route("/login", get(login))
         .route("/signup", get(signup))
         .nest("/api", api::api_routes())

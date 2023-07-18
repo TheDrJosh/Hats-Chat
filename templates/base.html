@@ -23,10 +23,14 @@
         </div>
         <div class="flex-1"></div>
         <div class="flex flex-col">
-            <img id="profile_pic" src="profile_pictures/{{ base_info.username }}"
+            <img id="profile_pic" src="/profile_pictures/{{ base_info.username }}"
                 class="w-12 h-12 flex-initial justify-self-end self-center mr-1" alt="">
             <label for="profile_pic" class="text-center">{{ base_info.display_name }}</label>
+            <div id="drop-down" class="absolute translate-y-24">
+                {% include "components/drop_down.html" %}
+            </div>
         </div>
+       
     </nav>
     <div class="flex flex-row w-full h-full overflow-hidden">
         {% include "components/friends_list.html" %}
