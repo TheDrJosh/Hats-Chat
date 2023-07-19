@@ -25,3 +25,4 @@
 - better logging
 - add esscape to modal
 - suport file uploads with multipart forms
+- json bot api?

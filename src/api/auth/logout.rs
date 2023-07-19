@@ -4,7 +4,7 @@ use tower_cookies::Cookies;
 
 use crate::{data::app_state::AppState, utils::ToServerError};
 
-use super::logged_in;
+use super::{logged_in, COOKIE_NAME};
 
 pub async fn logout(
     State(state): State<AppState>,
@@ -15,7 +15,7 @@ pub async fn logout(
     let user_id = logged_in(&state, &cookies).await.server_error()?;
 
     match user_id {
-        Some(user_id) => match private_cookies.get("chat-web-app") {
+        Some(user_id) => match private_cookies.get(COOKIE_NAME) {
             Some(token) => {
                 sqlx::query!(
                     "DELETE FROM auth_tokens WHERE user_id = $1 AND token = $2",
@@ -28,6 +28,7 @@ pub async fn logout(
 
                 private_cookies.remove(token.clone());
 
+                //TODO send need to refresh
                 Ok(StatusCode::ACCEPTED)
             }
             None => Ok(StatusCode::UNAUTHORIZED),

@@ -22,15 +22,15 @@
             <h1 class="col-start-2 self-center ml-5 text-4xl font-bold tracking-tight">Web Chat</h1>
         </div>
         <div class="flex-1"></div>
-        <div class="flex flex-col">
+        <div class="flex flex-col group mr-1">
             <img id="profile_pic" src="/profile_pictures/{{ base_info.username }}"
                 class="w-12 h-12 flex-initial justify-self-end self-center mr-1" alt="">
-            <label for="profile_pic" class="text-center">{{ base_info.display_name }}</label>
-            <div id="drop-down" class="absolute translate-y-24">
-                {% include "components/drop_down.html" %}
+            <span for="profile_pic" class="text-center">{{ base_info.display_name }}</span>
+            <div class="hidden absolute bg-slate-400 w-28 z-10 group-hover:block -translate-x-6 translate-y-[4.5rem] rounded">
+                <a class="px-3 py-4 block hover:bg-slate-500 rounded" href="/{{ base_info.username }}/account">Account</a>
+                <span class="px-3 py-4 block hover:bg-slate-500 rounded cursor-pointer" hx-post="/api/auth/user/logout">Sign Out</span>
             </div>
         </div>
-       
     </nav>
     <div class="flex flex-row w-full h-full overflow-hidden">
         {% include "components/friends_list.html" %}
