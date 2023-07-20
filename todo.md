@@ -9,14 +9,14 @@
 
 ## Later
 
-- use docker compose
+- add esscape key closing to modal
+- use layer for auth
+- email conformation
 - use tailwind theming in a color revamp
   - better light mode
-- use sql notify for multi node architecture
-- email conformation
+- use docker compose
 - refactor to better sql
-- use layer for auth
-- add esscape key closing to modal
+- use sql notify for multi node architecture
 - better logging
 
 ## Maybes
