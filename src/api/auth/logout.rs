@@ -29,7 +29,7 @@ pub async fn logout(
 
                 private_cookies.remove(token.clone());
 
-                let mut headers = HeaderMap::new();
+                let mut headers = HeaderMap::default();
 
                 headers.insert(
                     HeaderName::from_static("hx-refresh"),

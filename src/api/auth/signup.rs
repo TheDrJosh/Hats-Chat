@@ -1,6 +1,6 @@
-use axum::{extract::State, response::Html, Form};
+use axum::{extract::State, Form};
 use email_address::EmailAddress;
-use http::StatusCode;
+use http::{HeaderMap, StatusCode, HeaderName, HeaderValue};
 use serde::Deserialize;
 use sqlx::PgPool;
 use tower_cookies::Cookies;
@@ -33,7 +33,7 @@ pub async fn signup(
     State(state): State<AppState>,
     cookies: Cookies,
     Form(form): Form<CreateUserForm>,
-) -> Result<Result<SignUpTemplate, Html<String>>, StatusCode> {
+) -> Result<Result<SignUpTemplate, HeaderMap>, StatusCode> {
     // check if passwords match
     if form.password != form.confirm_password {
         return Ok(Ok(SignUpTemplate::with_password_error(
@@ -51,7 +51,9 @@ pub async fn signup(
         .await
         .server_error()?
     {
-        return Ok(Ok(SignUpTemplate::with_email_error("Email already used.".to_owned())));
+        return Ok(Ok(SignUpTemplate::with_email_error(
+            "Email already used.".to_owned(),
+        )));
     }
     // chech if username in database
     if username_in_database(&form.username, &state.pool)
@@ -59,7 +61,7 @@ pub async fn signup(
         .server_error()?
     {
         return Ok(Ok(SignUpTemplate::with_username_error(
-            "Username already taken.".to_owned()
+            "Username already taken.".to_owned(),
         )));
     }
 
@@ -80,9 +82,13 @@ pub async fn signup(
         .await
         .server_error()?;
 
-    Ok(Err(Html(
-        "loading...\n<meta http-equiv=\"refresh\" content=\"0\" />".to_owned(),
-    )))
+    let mut headers = HeaderMap::default();
+
+    headers.insert(
+        HeaderName::from_static("hx-refresh"),
+        HeaderValue::from_static("true"),
+    );
+    Ok(Err(headers))
 }
 
 async fn username_in_database(username: &str, pool: &PgPool) -> anyhow::Result<bool> {

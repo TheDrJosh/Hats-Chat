@@ -1,14 +1,12 @@
-use axum::{extract::State, response::Html, Form};
+use axum::{extract::State, Form};
 use email_address::EmailAddress;
-use http::StatusCode;
+use http::{HeaderMap, StatusCode, HeaderName, HeaderValue};
 use serde::Deserialize;
 use sqlx::PgPool;
 use tower_cookies::Cookies;
 
 use crate::{
-    api::auth::make_jwt_token,
-    data::app_state::AppState,
-    utils::ToServerError, LogInTemplate,
+    api::auth::make_jwt_token, data::app_state::AppState, utils::ToServerError, LogInTemplate,
 };
 
 #[derive(Debug, Deserialize)]
@@ -21,7 +19,7 @@ pub async fn login(
     State(state): State<AppState>,
     cookies: Cookies,
     Form(form): Form<LoginForm>,
-) -> Result<Result<LogInTemplate, Html<String>>, StatusCode> {
+) -> Result<Result<LogInTemplate, HeaderMap>, StatusCode> {
     tracing::debug!("request login for user ({}).", form.username,);
 
     match get_password_hash_from_username_or_email(&form.username, &state.pool)
@@ -41,21 +39,30 @@ pub async fn login(
 
                 tracing::debug!("created tokens: id: {}.", user_id);
 
-                Ok(Err(Html(
-                    "loading...\n<meta http-equiv=\"refresh\" content=\"0\" />".to_owned(),
-                )))
+                let mut headers = HeaderMap::default();
+
+                headers.insert(
+                    HeaderName::from_static("hx-refresh"),
+                    HeaderValue::from_static("true"),
+                );
+
+                Ok(Err(headers))
             } else {
                 tracing::debug!(
                     "login atempt for user ({}) failed wrong password",
                     form.username
                 );
-                Ok(Ok(LogInTemplate::with_error("Wrong username or password".to_owned())))
+                Ok(Ok(LogInTemplate::with_error(
+                    "Wrong username or password".to_owned(),
+                )))
             }
         }
         None => {
             tracing::debug!("no user ({}) found", form.username);
 
-            Ok(Ok(LogInTemplate::with_error("Wrong username or password".to_owned())))
+            Ok(Ok(LogInTemplate::with_error(
+                "Wrong username or password".to_owned(),
+            )))
         }
     }
 }

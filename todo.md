@@ -16,9 +16,7 @@
 - switch to signed cookie instead of private ones?
 - refactor to better sql
 - use layer for auth
-- user HX-Refresh responce instead of \<meta> tags
 - better logging
 - add esscape key closing to modal
-- suport file uploads with multipart forms
+- suport file uploads with multipart forms?
 - json bot api?
-- css round profile picutres
