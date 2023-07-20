@@ -67,16 +67,32 @@ pub async fn get_friends(user_id: i32, pool: &PgPool) -> anyhow::Result<Vec<i32>
         if !friends_map.contains_key(&friend_id) {
             friends_map.insert(friend_id, vec![time]);
         } else {
-            friends_map.get_mut(&friend_id).unwrap().push(time);
+            friends_map
+                .get_mut(&friend_id)
+                .expect("map should contain key at this point")
+                .push(time);
         }
     }
 
-    let mut friends_and_time = friends_map.iter().map(|(friend_id, times)| (friend_id, times.iter().max().unwrap())).collect::<Vec<_>>();
+    let mut friends_and_time = friends_map
+        .iter()
+        .map(|(friend_id, times)| {
+            (
+                friend_id,
+                times
+                    .iter()
+                    .max()
+                    .expect("map should contain one or more timestamps at this point"),
+            )
+        })
+        .collect::<Vec<_>>();
 
     friends_and_time.sort_by(|a, b| a.1.cmp(&b.1));
 
-    let friends = friends_and_time.into_iter().map(|(&friend_id, _)| friend_id).collect();
+    let friends = friends_and_time
+        .into_iter()
+        .map(|(&friend_id, _)| friend_id)
+        .collect();
 
     Ok(friends)
 }
-

@@ -17,7 +17,10 @@ use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
 use utils::ToServerError;
 
-use crate::{app::find_friend::{find_friend_modal, find_friend_list}, data::app_state::AppStateInner};
+use crate::{
+    app::find_friend::{find_friend_list, find_friend_modal},
+    data::app_state::AppStateInner,
+};
 
 mod api;
 mod app;
@@ -34,21 +37,69 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    dotenvy::dotenv().unwrap();
+    if let Err(error) = dotenvy::dotenv() {
+        tracing::error!("Failed to load .env file with error ({error})");
+        return;
+    }
 
-    let pool = data::database_init().await.unwrap();
+    let pool = match data::database_init().await {
+        Ok(pool) => pool,
+        Err(error) => {
+            tracing::error!("Failed to initalize database with error ({error})");
+            return;
+        }
+    };
 
-    data::init_tables(&pool).await.unwrap();
+    if let Err(error) = data::init_tables(&pool).await {
+        tracing::error!("Failed to initalize tables with error ({error})");
+        return;
+    };
 
     let (sender, _) = watch::channel((-1, -1));
 
-    // tracing::debug!("{}", hex::encode(Key::generate().master()));
+    let cookie_key_master = match dotenvy::var("COOKIE_KEY") {
+        Ok(cookie_key_text) => match hex::decode(cookie_key_text) {
+            Ok(cookie_key_master) => cookie_key_master,
+            Err(error) => {
+                tracing::error!("Failed to decode cookie key with error ({error})");
+                return;
+            }
+        },
+        Err(error) => match error {
+            dotenvy::Error::EnvVar(error) => match error {
+                std::env::VarError::NotPresent => {
+                    let key = Key::generate();
 
-    let cookie_key_master = hex::decode(dotenvy::var("COOKIE_KEY").unwrap()).unwrap();
+                    tracing::warn!(
+                        "cookie key not specified gennerated new key: {}",
+                        hex::encode(Key::generate().master())
+                    );
+
+                    Vec::from(key.master())
+                }
+                std::env::VarError::NotUnicode(_) => {
+                    tracing::error!("Failed to get cookie key from .env with error non unicode");
+                    return;
+                }
+            },
+            _ => {
+                tracing::error!("Failed to get cookie key from .env with error ({error})");
+                return;
+            }
+        },
+    };
+
+    let jws_key = match dotenvy::var("JWS_SECRET") {
+        Ok(jws_key) => jws_key,
+        Err(error) => {
+            tracing::error!("Failed to get jws key from .env with error ({error})");
+            return;
+        }
+    };
 
     let app_state = Arc::new(AppStateInner {
         pool,
-        jws_key: dotenvy::var("JWS_SECRET").unwrap(),
+        jws_key,
         cookie_key: Key::from(&cookie_key_master),
         message_sent: sender,
     });
@@ -71,10 +122,13 @@ async fn main() {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     println!("listening on {}", addr);
-    axum::Server::bind(&addr)
+    if let Err(error) = axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+    {
+        tracing::error!("Failed to launch server with error ({error})");
+        return;
+    }
 }
 
 async fn handler(
