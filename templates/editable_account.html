@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Web Chat</title>
+    <meta name="description" content="A Web Chat app.">
+    <meta name="author" content="Joshua">
+    <link rel="icon" href="/assets/favicon.ico">
+    <link href="/assets/output.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.2"
+        integrity="sha384-L6OqL9pRWyyFU3+/bjdSri+iIphTN/bvYyM37tICVyOJkWZLpP2vGn6VUEXgzg6h"
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+</head>
+
+<body class="w-screen h-screen flex flex-col dark:text-white bg-slate-600 overflow-x-hidden">
+
+    <a class="absolute text-slate-400 text-4xl border-slate-400 border w-12 h-12 right-5 top-5 text-center rounded-full align-middle cursor-pointer hover:bg-slate-500"
+        href="/">
+        &times;
+    </a>
+
+    <div class="grid grid-cols-1 p-24 gap-16 md:grid-cols-2 lg:grid-cols-3">
+
+        <div class="flex flex-col bg-slate-700 rounded-xl p-8 m-auto">
+            <h1 class="mb-5 text-2xl font-semibold">Your Info</h1>
+            <div class="flex flex-row">
+                <img src="/profile_pictures/{{ username.username() }}" class="w-24 h-24 mr-6 rounded-full">
+                <div class="flex flex-col">
+                    <h2 class="text-lg">{{ username.display_name() }}</h2>
+                    <span class="text-sm text-slate-200">{{ username.username() }}</span>
+                </div>
+            </div>
+        </div>
+
+        <form class="flex flex-col bg-slate-700 rounded-xl p-8 m-auto" hx-put="/api/account/display_name">
+            <h1 class="m-5 text-lg font-semibold">Change your Display Name</h1>
+            <input name="display_name" type="text" class="mx-5 p-1 bg-cyan-50 dark:bg-slate-400 rounded-lg">
+            <input type="submit" class="m-5 p-2 bg-slate-500 hover:bg-slate-400 rounded mb-0 w-fit self-center" value="Change Name">
+        </form>
+
+        <form class="flex flex-col bg-slate-700 rounded-xl p-8 m-auto" hx-put="/api/account/profile_picture" hx-encoding="multipart/form-data">
+            <h1 class="m-5 text-lg font-semibold">Change your Profile Picture</h1>
+            <input name="file" type="file" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-500 file:text-white hover:file:bg-slate-400 mx-5">
+            <input type="submit" class="m-5 p-2 bg-slate-500 hover:bg-slate-400 rounded w-fit self-center" value="Update Profile Picture">
+        </form>
+
+        <form class="flex flex-col bg-slate-700 rounded-xl p-8 m-auto">
+            <h1 class="m-5 text-lg font-semibold">Update your email</h1>
+            <p class="mx-5 mb-5 text-sm text-slate-200">You have to confirm the email change in and email to the previous email</p>
+            <input name="email" type="email" class="p-1 bg-cyan-50 dark:bg-slate-400 rounded-lg mx-5">
+            <input type="submit" class="m-5 p-2 bg-slate-500 hover:bg-slate-400 rounded w-fit self-center" value="Send Email">
+        </form>
+
+        <div class="flex flex-col bg-slate-700 rounded-xl p-8 m-auto">
+            <h1 class="m-5 text-lg font-semibold">Change Your Password</h1>
+            <p class="mx-5 mb-5 text-sm text-slate-200">
+                This will send an email to reset your password
+            </p>
+            <button class="m-5 p-2 bg-slate-500 hover:bg-slate-400 rounded w-fit self-center">Reset Password</button>
+        </div>
+        
+    </div>
+
+
+
+</body>
+
+</html>

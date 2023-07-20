@@ -6,7 +6,7 @@
                 <div
                     class="flex-initial p-1 m-1 rounded flex {% match chat_window_info %}{% when Some with (chat_window_info) %}{% if friend.username() == chat_window_info.recipient_name %} bg-cyan-500 dark:bg-slate-800 {% endif %} {% when None %} {% endmatch %} hover:bg-cyan-700 dark:hover:bg-slate-600">
                     <img src="/profile_pictures/{{ friend.username() }}"
-                        class="w-12 h-12 flex-initial justify-self-end self-center mr-1">
+                        class="w-12 h-12 flex-initial justify-self-end self-center mr-1 rounded-full">
                     <h1 class="text-xl self-center ml-3">{{ friend.display_name() }}</h1>
                 </div>
             </a>

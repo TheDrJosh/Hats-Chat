@@ -62,6 +62,7 @@ async fn main() {
         .route("/profile_pictures/:username", get(profile_pictures))
         .nest_service("/assets", ServeDir::new("assets/"))
         .route("/inner/modal/list", post(find_friend_list))
+        .route("/account/:username", get(app::account::account_route))
         .fallback(not_found)
         .with_state(app_state)
         .layer(CookieManagerLayer::new())

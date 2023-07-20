@@ -8,6 +8,7 @@ use self::friend_list::FiendListInfo;
 
 mod friend_list;
 pub mod find_friend;
+pub mod account;
 
 pub async fn main(
     state: AppState,

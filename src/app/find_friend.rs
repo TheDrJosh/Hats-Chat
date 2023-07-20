@@ -36,7 +36,7 @@ pub async fn find_friend_list(
 
     tracing::debug!("search from user({}) for friend with: {}", user_id, search);
 
-    let mut name_list = sqlx::query!(
+    let name_list = sqlx::query!(
         "SELECT username, display_name FROM users WHERE SUBSTRING(username for $2) = $1 AND id != $3 LIMIT 100",
         search,
         search.len() as i32,
@@ -48,10 +48,6 @@ pub async fn find_friend_list(
     .into_iter()
     .map(|rec| Username::new(rec.username, rec.display_name))
     .collect::<Vec<_>>();
-
-    for _ in 0..30 {
-        name_list.push(name_list[0].clone())
-    }
 
     Ok(FindFriendListTemplate { name_list })
 }

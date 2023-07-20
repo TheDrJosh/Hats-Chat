@@ -1,5 +1,6 @@
+use askama_axum::IntoResponse;
 use axum::extract::State;
-use http::StatusCode;
+use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use tower_cookies::Cookies;
 
 use crate::{data::app_state::AppState, utils::ToServerError};
@@ -9,7 +10,7 @@ use super::{logged_in, COOKIE_NAME};
 pub async fn logout(
     State(state): State<AppState>,
     cookies: Cookies,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<impl IntoResponse, StatusCode> {
     let private_cookies = cookies.private(&state.cookie_key);
 
     let user_id = logged_in(&state, &cookies).await.server_error()?;
@@ -28,11 +29,17 @@ pub async fn logout(
 
                 private_cookies.remove(token.clone());
 
-                //TODO send need to refresh
-                Ok(StatusCode::ACCEPTED)
+                let mut headers = HeaderMap::new();
+
+                headers.insert(
+                    HeaderName::from_static("hx-refresh"),
+                    HeaderValue::from_static("true"),
+                );
+
+                Ok(headers)
             }
-            None => Ok(StatusCode::UNAUTHORIZED),
+            None => Err(StatusCode::UNAUTHORIZED),
         },
-        None => Ok(StatusCode::UNAUTHORIZED),
+        None => Err(StatusCode::UNAUTHORIZED),
     }
 }

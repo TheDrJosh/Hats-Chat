@@ -8,21 +8,17 @@
 - formalize HATS stack
 - rename to hats chat?
 - make .env template
-- add settings page to manage acount
-- upload profile pictures ^
-- email conformation?
-- no chat selected screen
-- group chats
-- new messages
-- send files
-- multi line messages
-- actural friend system
-- notification system
+- email conformation
+- improve no chat selected screen
+- group chats?
+- multi line messages?
+- notification system?
 - switch to signed cookie instead of private ones?
 - refactor to better sql
 - use layer for auth
 - user HX-Refresh responce instead of \<meta> tags
 - better logging
-- add esscape to modal
+- add esscape key closing to modal
 - suport file uploads with multipart forms
 - json bot api?
+- css round profile picutres
