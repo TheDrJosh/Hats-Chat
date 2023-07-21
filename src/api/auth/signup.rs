@@ -33,7 +33,7 @@ pub async fn signup(
     State(state): State<AppState>,
     cookies: Cookies,
     Form(form): Form<CreateUserForm>,
-) -> Result<Result<SignUpTemplate, HeaderMap>, StatusCode> {
+) -> Result<Result<SignUpTemplate, HeaderMap>, (StatusCode, String)> {
     // check if passwords match
     if form.password != form.confirm_password {
         return Ok(Ok(SignUpTemplate::with_password_error(

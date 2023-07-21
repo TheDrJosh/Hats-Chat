@@ -9,7 +9,7 @@ mod login;
 mod logout;
 mod signup;
 
-const COOKIE_NAME: &'static str = "web_chat_app_token";
+pub const AUTH_COOKIE_NAME: &'static str = "web_chat_app_token";
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Claim {
@@ -52,86 +52,11 @@ pub async fn make_jwt_token(
     tracing::debug!("inserted token into database (user id: {}).", user_id);
 
     cookies.private(&state.cookie_key).add(
-        Cookie::build(COOKIE_NAME, token.clone())
+        Cookie::build(AUTH_COOKIE_NAME, token.clone())
             .path("/")
             .expires(OffsetDateTime::now_utc().checked_add(Duration::minutes(30)))
             .finish(),
     );
 
     Ok(token)
-}
-
-pub async fn logged_in(state: &AppState, cookies: &Cookies) -> anyhow::Result<Option<i32>> {
-    let private_cookies = cookies.private(&state.cookie_key);
-
-    match private_cookies.get(COOKIE_NAME) {
-        Some(cookie_token) => {
-            tracing::debug!("found token cookie.");
-
-            let user_record = sqlx::query!(
-                "SELECT user_id FROM auth_tokens WHERE token = $1",
-                cookie_token.value()
-            )
-            .fetch_optional(&state.pool)
-            .await?
-            .map(|rec| rec.user_id);
-
-            match user_record {
-                Some(user_id) => {
-                    let username =
-                        sqlx::query!("SELECT username FROM users WHERE id = $1", user_id)
-                            .fetch_one(&state.pool)
-                            .await?
-                            .username;
-
-                    tracing::debug!(
-                        "found user in database with token. id: {}, username: {}.",
-                        user_id,
-                        &username
-                    );
-
-                    let mut validation = jsonwebtoken::Validation::default();
-                    validation.sub = Some(username);
-
-                    let res = jsonwebtoken::decode::<Claim>(
-                        cookie_token.value(),
-                        &jsonwebtoken::DecodingKey::from_secret(state.jws_key.as_bytes()),
-                        &validation,
-                    );
-                    use jsonwebtoken::errors::ErrorKind;
-                    match res {
-                        Ok(_) => {
-                            tracing::debug!("user (id: {}) is logged in.", user_id);
-
-                            Ok(Some(user_id))
-                        }
-                        Err(e) => match e.kind() {
-                            ErrorKind::ExpiredSignature | ErrorKind::InvalidSubject => {
-                                tracing::debug!(
-                                    "user (id: {}) submited invalid jwt token.",
-                                    user_id
-                                );
-
-                                private_cookies.remove(cookie_token);
-                                Ok(None)
-                            }
-                            _ => Err(e)?,
-                        },
-                    }
-                }
-                None => {
-                    tracing::debug!("token not in database.");
-
-                    private_cookies.remove(cookie_token);
-
-                    Ok(None)
-                }
-            }
-        }
-        None => {
-            tracing::debug!("didn't find token cookie.");
-
-            Ok(None)
-        }
-    }
 }

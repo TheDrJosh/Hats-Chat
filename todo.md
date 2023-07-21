@@ -2,14 +2,10 @@
 
 ## Active
 
-- Make readme
-  - formalize HATS stack
+- email conformation
 
 ## Later
 
-- add esscape key closing to modal
-- use layer for auth
-- email conformation
 - use tailwind theming in a color revamp
   - better light mode
 - landing page revamp

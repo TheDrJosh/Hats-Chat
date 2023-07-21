@@ -2,12 +2,10 @@ use askama::Template;
 use axum::extract::{Path, State};
 use http::StatusCode;
 use sqlx::PgPool;
-use tower_cookies::Cookies;
 
 use crate::{
-    api::auth::logged_in,
     data::app_state::AppState,
-    utils::{username::Username, ToServerError},
+    utils::{username::Username, ToServerError, auth_layer::OptionalExtractAuth},
 };
 
 use self::account_viewer::{account_viewer_page, AccountViewerTemplate};
@@ -17,9 +15,8 @@ mod account_viewer;
 pub async fn account_route(
     Path(account_username): Path<String>,
     State(state): State<AppState>,
-    cookies: Cookies,
-) -> Result<Result<EditableAccountTemplate, AccountViewerTemplate>, StatusCode> {
-    let user_id = logged_in(&state, &cookies).await.server_error()?;
+    OptionalExtractAuth(user_id): OptionalExtractAuth,
+) -> Result<Result<EditableAccountTemplate, AccountViewerTemplate>, (StatusCode, String)> {
 
     match user_id {
         Some(user_id) => {
@@ -42,7 +39,7 @@ pub async fn account_route(
 async fn editable_account_page(
     user_id: i32,
     pool: &PgPool,
-) -> Result<EditableAccountTemplate, StatusCode> {
+) -> Result<EditableAccountTemplate, (StatusCode, String)> {
     Ok(EditableAccountTemplate {
         username: Username::new_from_id(user_id, pool).await.server_error()?,
     })

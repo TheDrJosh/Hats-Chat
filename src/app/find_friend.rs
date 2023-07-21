@@ -1,12 +1,10 @@
 use askama::Template;
 use axum::{extract::State, Form};
 use http::StatusCode;
-use tower_cookies::Cookies;
 
 use crate::{
-    api::auth::logged_in,
     data::app_state::AppState,
-    utils::{username::Username, ToServerError},
+    utils::{username::Username, ToServerError, auth_layer::ExtractAuth},
 };
 
 pub async fn find_friend_modal() -> FindFriendModalTemplate {
@@ -24,15 +22,10 @@ pub struct FindFriendForm {
 
 pub async fn find_friend_list(
     State(state): State<AppState>,
-    cookies: Cookies,
+    ExtractAuth(user_id): ExtractAuth,
     Form(form): Form<FindFriendForm>,
-) -> Result<FindFriendListTemplate, StatusCode> {
+) -> Result<FindFriendListTemplate, (StatusCode, String)> {
     let search = form.search;
-
-    let user_id = logged_in(&state, &cookies)
-        .await
-        .server_error()?
-        .ok_or(StatusCode::UNAUTHORIZED)?;
 
     tracing::debug!("search from user({}) for friend with: {}", user_id, search);
 

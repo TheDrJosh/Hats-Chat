@@ -12,13 +12,11 @@ use http::StatusCode;
 
 use sqlx::PgPool;
 use time::PrimitiveDateTime;
-use tower_cookies::Cookies;
 
 use crate::{
-    api::auth::logged_in,
     app::BaseInfo,
     data::app_state::AppState,
-    utils::{username::Username, ToServerError},
+    utils::{auth_layer::ExtractAuth, username::Username, ToServerError},
 };
 
 pub fn chat_routes() -> Router<AppState> {
@@ -35,46 +33,41 @@ struct PostChatForm {
 async fn post_chat(
     Path(recipient_name): Path<String>,
     State(state): State<AppState>,
-    cookies: Cookies,
+    ExtractAuth(user_id): ExtractAuth,
     Form(form): Form<PostChatForm>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<(StatusCode, String), (StatusCode, String)> {
     tracing::debug!("post chat");
 
-    match logged_in(&state, &cookies).await.server_error()? {
-        Some(user_id) => {
-            match sqlx::query!("SELECT id FROM users WHERE username = $1", recipient_name)
-                .fetch_optional(&state.pool)
-                .await
-                .server_error()?
-                .map(|rec| rec.id)
-            {
-                Some(recipient_id) => {
-                    let utc = time::OffsetDateTime::now_utc();
-                    let timestamp = time::PrimitiveDateTime::new(utc.date(), utc.time());
+    match sqlx::query!("SELECT id FROM users WHERE username = $1", recipient_name)
+        .fetch_optional(&state.pool)
+        .await
+        .server_error()?
+        .map(|rec| rec.id)
+    {
+        Some(recipient_id) => {
+            let utc = time::OffsetDateTime::now_utc();
+            let timestamp = time::PrimitiveDateTime::new(utc.date(), utc.time());
 
-                    tracing::debug!("receved message from user({user_id}) to user({recipient_id})");
+            tracing::debug!("receved message from user({user_id}) to user({recipient_id})");
 
-                    sqlx::query!("INSERT INTO chat_messages(sender_id, recipient_id, msg, sent_at) VALUES ($1, $2, $3, $4);", user_id, recipient_id, form.message, timestamp).execute(&state.pool).await.server_error()?;
+            sqlx::query!("INSERT INTO chat_messages(sender_id, recipient_id, msg, sent_at) VALUES ($1, $2, $3, $4);", user_id, recipient_id, form.message, timestamp).execute(&state.pool).await.server_error()?;
 
-                    state
-                        .message_sent
-                        .send((user_id, recipient_id))
-                        .server_error()?;
+            state
+                .message_sent
+                .send((user_id, recipient_id))
+                .server_error()?;
 
-                    Ok(StatusCode::OK)
-                }
-                None => Err(StatusCode::BAD_REQUEST),
-            }
+            Ok((StatusCode::OK, String::from("Ok")))
         }
-        None => Err(StatusCode::UNAUTHORIZED),
+        None => Err((StatusCode::BAD_REQUEST, String::from("Bad Request"))),
     }
 }
 
 async fn sse_chat_messages(
     Path(other_user_name): Path<String>,
     State(state): State<AppState>,
-    cookies: Cookies,
-) -> Result<Sse<impl Stream<Item = Result<Event, anyhow::Error>>>, StatusCode> {
+    ExtractAuth(user_id): ExtractAuth,
+) -> Result<Sse<impl Stream<Item = Result<Event, anyhow::Error>>>, (StatusCode, String)> {
     tracing::debug!("sse chat start with {other_user_name}");
 
     let other_user_id = sqlx::query!("SELECT id FROM users WHERE username = $1", other_user_name)
@@ -83,44 +76,37 @@ async fn sse_chat_messages(
         .server_error()?
         .id;
 
-    let user_id = logged_in(&state, &cookies).await.server_error()?;
+    let mut listener = state.message_sent.subscribe();
 
-    match user_id {
-        Some(user_id) => {
-            let mut listener = state.message_sent.subscribe();
+    let stream = async_stream::stream! {
+        loop {
+            listener.changed().await?;
+            let payload = *listener.borrow();
 
-            let stream = async_stream::stream! {
-                loop {
-                    listener.changed().await?;
-                    let payload = *listener.borrow();
+            tracing::debug!("processing new message. payload({payload:?})");
 
-                    tracing::debug!("processing new message. payload({payload:?})");
+            if payload == (user_id, other_user_id) || payload == (other_user_id, user_id) {
+                tracing::debug!("message valid");
 
-                    if payload == (user_id, other_user_id) || payload == (other_user_id, user_id) {
-                        tracing::debug!("message valid");
+                let chat_window = ChatWindow {
+                    base_info: BaseInfo::new(user_id, &state.pool).await?,
+                    chat_window_info: Some(ChatWindowInfo::new(user_id, other_user_id, &state.pool).await?),
+                };
 
-                        let chat_window = ChatWindow {
-                            base_info: BaseInfo::new(user_id, &state.pool).await?,
-                            chat_window_info: Some(ChatWindowInfo::new(user_id, other_user_id, &state.pool).await?),
-                        };
+                let html = chat_window.render()?.replace(&['\n', '\r'], "");
 
-                        let html = chat_window.render()?.replace(&['\n', '\r'], "");
+                tracing::debug!("SSE responce sent to user({user_id})");
 
-                        tracing::debug!("SSE responce sent to user({user_id})");
-
-                        yield Ok(Event::default().event("message").data(html));
-                    }
-                }
-            };
-
-            Ok(Sse::new(stream).keep_alive(
-                axum::response::sse::KeepAlive::new()
-                    .interval(Duration::from_secs(1))
-                    .text("keep-alive-text"),
-            ))
+                yield Ok(Event::default().event("message").data(html));
+            }
         }
-        None => Err(StatusCode::UNAUTHORIZED),
-    }
+    };
+
+    Ok(Sse::new(stream).keep_alive(
+        axum::response::sse::KeepAlive::new()
+            .interval(Duration::from_secs(1))
+            .text("keep-alive-text"),
+    ))
 }
 
 #[derive(Template)]

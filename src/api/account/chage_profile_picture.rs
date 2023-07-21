@@ -2,57 +2,55 @@ use std::io::Cursor;
 
 use axum::extract::{Multipart, State};
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
-use tower_cookies::Cookies;
 
-use crate::{api::auth::logged_in, data::app_state::AppState, utils::ToServerError};
+use crate::{
+    data::app_state::AppState,
+    utils::{auth_layer::ExtractAuth, ToServerError},
+};
 
 pub async fn change_display_name(
     State(state): State<AppState>,
-    cookies: Cookies,
+    ExtractAuth(user_id): ExtractAuth,
     mut multipart: Multipart,
-) -> Result<HeaderMap, StatusCode> {
-    let user_id = logged_in(&state, &cookies)
-        .await
-        .server_error()?
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
+) -> Result<HeaderMap, (StatusCode, String)> {
     tracing::debug!("starting update to profile picture for user({user_id}");
 
     let (file_type, file) = match multipart.next_field().await.server_error()? {
         Some(field) => {
-            let name = field.name().ok_or(StatusCode::BAD_REQUEST)?.to_owned();
+            let name = field
+                .name()
+                .ok_or((StatusCode::BAD_REQUEST, String::from("Bad Request")))?
+                .to_owned();
             let content_type = field
                 .content_type()
-                .ok_or(StatusCode::BAD_REQUEST)?
+                .ok_or((StatusCode::BAD_REQUEST, String::from("Bad Request")))?
                 .to_owned();
             let data = field.bytes().await.server_error()?;
 
-
             if name != "file" {
                 tracing::debug!("unexpect paramater name got ({name})");
-                Err(StatusCode::BAD_REQUEST)?;
+                Err((StatusCode::BAD_REQUEST, String::from("Bad Request")))?;
             }
 
             if !content_type.starts_with("image/") {
                 tracing::debug!("unexpect content type got ({content_type})");
-                Err(StatusCode::BAD_REQUEST)?;
+                Err((StatusCode::BAD_REQUEST, String::from("Bad Request")))?;
             }
 
             if multipart.next_field().await.server_error()?.is_some() {
                 tracing::debug!("unexpect got second part");
-                Err(StatusCode::BAD_REQUEST)?;
+                Err((StatusCode::BAD_REQUEST, String::from("Bad Request")))?;
             }
-
-            
 
             (content_type, data)
         }
-        None => Err(StatusCode::BAD_REQUEST)?,
+        None => Err((StatusCode::BAD_REQUEST, String::from("Bad Request")))?,
     };
 
     tracing::debug!("decoded multipart form for new profile picture");
 
-    let file_type = image::ImageFormat::from_mime_type(file_type).ok_or(StatusCode::BAD_REQUEST)?;
+    let file_type = image::ImageFormat::from_mime_type(file_type)
+        .ok_or((StatusCode::BAD_REQUEST, String::from("Bad Request")))?;
 
     let img = image::load_from_memory_with_format(&file, file_type).server_error()?;
 

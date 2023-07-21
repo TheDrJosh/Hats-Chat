@@ -28,10 +28,6 @@ impl FiendListInfo {
             ))
         }
 
-        // for _ in 0..30 {
-        //     friend_names.push(friend_names[0].clone());
-        // }
-
         Ok(Self {
             friends: friend_names,
         })
@@ -87,7 +83,7 @@ pub async fn get_friends(user_id: i32, pool: &PgPool) -> anyhow::Result<Vec<i32>
         })
         .collect::<Vec<_>>();
 
-    friends_and_time.sort_by(|a, b| a.1.cmp(&b.1));
+    friends_and_time.sort_by(|a, b| b.1.cmp(&a.1));
 
     let friends = friends_and_time
         .into_iter()

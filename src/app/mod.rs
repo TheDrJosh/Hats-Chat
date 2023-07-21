@@ -14,7 +14,7 @@ pub async fn main(
     state: AppState,
     user_id: i32,
     recipient: Option<String>,
-) -> Result<Base, StatusCode> {
+) -> Result<Base, (StatusCode, String)> {
     let base_info = BaseInfo::new(user_id, &state.pool).await.server_error()?;
 
     let chat_window_info = match recipient {

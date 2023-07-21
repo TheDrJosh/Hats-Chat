@@ -1,6 +1,5 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use api::auth::logged_in;
 use app::Base;
 use askama::Template;
 use axum::{
@@ -15,7 +14,7 @@ use tokio::sync::watch;
 use tower_cookies::{CookieManagerLayer, Cookies, Key};
 use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
-use utils::ToServerError;
+use utils::{auth_layer::OptionalExtractAuth, ToServerError};
 
 use crate::{
     app::find_friend::{find_friend_list, find_friend_modal},
@@ -133,9 +132,9 @@ async fn main() {
 
 async fn handler(
     State(state): State<AppState>,
-    cookies: Cookies,
-) -> Result<Result<Base, LandingPageTemplate>, StatusCode> {
-    match logged_in(&state, &cookies).await.server_error()? {
+    OptionalExtractAuth(user_id): OptionalExtractAuth,
+) -> Result<Result<Base, LandingPageTemplate>, (StatusCode, String)> {
+    match user_id {
         Some(user_id) => Ok(Ok(app::main(state, user_id, None).await?)),
         None => Ok(Err(LandingPageTemplate)),
     }
@@ -148,27 +147,26 @@ struct LandingPageTemplate;
 async fn handler_chat(
     Path(recipient): Path<String>,
     State(state): State<AppState>,
-    cookies: Cookies,
-) -> Result<Result<impl IntoResponse, Redirect>, StatusCode> {
+    OptionalExtractAuth(user_id): OptionalExtractAuth,
+) -> Result<Result<impl IntoResponse, Redirect>, (StatusCode, String)> {
     tracing::debug!("handle chat");
-    match logged_in(&state, &cookies).await.server_error()? {
+    match user_id {
         Some(user_id) => Ok(Ok(app::main(state, user_id, Some(recipient)).await?)),
         None => Ok(Err(Redirect::to("/"))),
     }
 }
 
 async fn login(
-    State(state): State<AppState>,
     headers: HeaderMap,
-    cookies: Cookies,
-) -> Result<Result<LogInTemplate, Redirect>, StatusCode> {
+    OptionalExtractAuth(user_id): OptionalExtractAuth,
+) -> Result<Result<LogInTemplate, Redirect>, (StatusCode, String)> {
     if headers
         .get("HX-Request")
         .is_some_and(|header| header == "true")
     {
         Ok(Ok(LogInTemplate::default()))
     } else {
-        if logged_in(&state, &cookies).await.server_error()?.is_some() {
+        if user_id.is_some() {
             return Ok(Err(Redirect::to("/")));
         }
         Ok(Ok(LogInTemplate::default()))
@@ -188,17 +186,16 @@ impl LogInTemplate {
 }
 
 async fn signup(
-    State(state): State<AppState>,
     headers: HeaderMap,
-    cookies: Cookies,
-) -> Result<Result<SignUpTemplate, Redirect>, StatusCode> {
+    OptionalExtractAuth(user_id): OptionalExtractAuth,
+) -> Result<Result<SignUpTemplate, Redirect>, (StatusCode, String)> {
     if headers
         .get("HX-Request")
         .is_some_and(|header| header == "true")
     {
         return Ok(Ok(SignUpTemplate::default()));
     } else {
-        if logged_in(&state, &cookies).await.server_error()?.is_some() {
+        if user_id.is_some() {
             return Ok(Err(Redirect::to("/")));
         } else {
             return Ok(Ok(SignUpTemplate::default()));
@@ -252,9 +249,7 @@ struct NotFoundTemplate;
 async fn profile_pictures(
     Path(username): Path<String>,
     State(state): State<AppState>,
-    _headers: HeaderMap,
-    _cookies: Cookies,
-) -> Result<Result<impl IntoResponse, Redirect>, StatusCode> {
+) -> Result<Result<impl IntoResponse, Redirect>, (StatusCode, String)> {
     let picture = sqlx::query!(
         "SELECT profile_picture FROM users WHERE username = $1",
         username
@@ -282,7 +277,10 @@ async fn profile_pictures(
             Ok(Ok((headers, body)))
         }
         Some(None) => Ok(Err(Redirect::to("/assets/default_profile.avif"))),
-        None => Err(StatusCode::NOT_FOUND),
+        None => Err((
+            StatusCode::NOT_FOUND,
+            String::from("Profile Picture Not Found"),
+        )),
     }
 }
 

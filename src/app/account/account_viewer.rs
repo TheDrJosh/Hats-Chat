@@ -1,7 +1,7 @@
 use askama::Template;
 use http::StatusCode;
 
-pub async fn account_viewer_page() -> Result<AccountViewerTemplate, StatusCode> {
+pub async fn account_viewer_page() -> Result<AccountViewerTemplate, (StatusCode, String)> {
     Ok(AccountViewerTemplate)
 }
 

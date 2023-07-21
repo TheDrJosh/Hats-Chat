@@ -19,7 +19,7 @@ pub async fn login(
     State(state): State<AppState>,
     cookies: Cookies,
     Form(form): Form<LoginForm>,
-) -> Result<Result<LogInTemplate, HeaderMap>, StatusCode> {
+) -> Result<Result<LogInTemplate, HeaderMap>, (StatusCode, String)> {
     tracing::debug!("request login for user ({}).", form.username,);
 
     match get_password_hash_from_username_or_email(&form.username, &state.pool)
