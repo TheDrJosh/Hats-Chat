@@ -2,7 +2,6 @@
 
 ## Active
 
-- rename to hats chat
 - Make readme
   - formalize HATS stack
 
@@ -21,7 +20,6 @@
 - better logging
 
 ## Maybes
-
 
 - multi line messages
 - notification system
