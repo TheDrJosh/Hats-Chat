@@ -9,10 +9,11 @@
 - use tailwind theming in a color revamp
   - better light mode
 - landing page revamp
+- UI revamp
 - improve no chat selected screen
 - use docker compose
-- refactor to better sql
 - use sql notify for multi node architecture
+- refactor to better sql
 - better logging
 
 ## Maybes

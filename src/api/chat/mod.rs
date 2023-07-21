@@ -16,7 +16,7 @@ use time::PrimitiveDateTime;
 use crate::{
     app::BaseInfo,
     data::app_state::AppState,
-    utils::{auth_layer::ExtractAuth, username::Username, ToServerError},
+    utils::{auth_layer::ExtractActivatedAuth, username::Username, ToServerError},
 };
 
 pub fn chat_routes() -> Router<AppState> {
@@ -33,7 +33,7 @@ struct PostChatForm {
 async fn post_chat(
     Path(recipient_name): Path<String>,
     State(state): State<AppState>,
-    ExtractAuth(user_id): ExtractAuth,
+    ExtractActivatedAuth(user_id): ExtractActivatedAuth,
     Form(form): Form<PostChatForm>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     tracing::debug!("post chat");
@@ -66,7 +66,7 @@ async fn post_chat(
 async fn sse_chat_messages(
     Path(other_user_name): Path<String>,
     State(state): State<AppState>,
-    ExtractAuth(user_id): ExtractAuth,
+    ExtractActivatedAuth(user_id): ExtractActivatedAuth,
 ) -> Result<Sse<impl Stream<Item = Result<Event, anyhow::Error>>>, (StatusCode, String)> {
     tracing::debug!("sse chat start with {other_user_name}");
 

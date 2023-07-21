@@ -5,7 +5,7 @@ use sqlx::PgPool;
 
 use crate::{
     data::app_state::AppState,
-    utils::{username::Username, ToServerError, auth_layer::OptionalExtractAuth},
+    utils::{username::Username, ToServerError, auth_layer::ExtractOptionalActivatedAuth},
 };
 
 use self::account_viewer::{account_viewer_page, AccountViewerTemplate};
@@ -15,7 +15,7 @@ mod account_viewer;
 pub async fn account_route(
     Path(account_username): Path<String>,
     State(state): State<AppState>,
-    OptionalExtractAuth(user_id): OptionalExtractAuth,
+    ExtractOptionalActivatedAuth(user_id): ExtractOptionalActivatedAuth,
 ) -> Result<Result<EditableAccountTemplate, AccountViewerTemplate>, (StatusCode, String)> {
 
     match user_id {

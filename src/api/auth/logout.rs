@@ -5,7 +5,7 @@ use tower_cookies::Cookies;
 
 use crate::{
     data::app_state::AppState,
-    utils::{auth_layer::ExtractAuth, ToServerError},
+    utils::{auth_layer::ExtractActivatedAuth, ToServerError},
 };
 
 use super::AUTH_COOKIE_NAME;
@@ -13,7 +13,7 @@ use super::AUTH_COOKIE_NAME;
 pub async fn logout(
     State(state): State<AppState>,
     cookies: Cookies,
-    ExtractAuth(user_id): ExtractAuth,
+    ExtractActivatedAuth(user_id): ExtractActivatedAuth,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let private_cookies = cookies.private(&state.cookie_key);
 

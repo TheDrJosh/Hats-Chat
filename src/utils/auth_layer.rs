@@ -4,12 +4,33 @@ use tower_cookies::Cookies;
 
 use crate::{api::auth::Claim, data::app_state::AppState, utils::ToServerError};
 
-// Optional auth
-
-pub struct OptionalExtractAuth(pub Option<i32>);
+pub struct ExtractOptionalActivatedAuth(pub Option<i32>);
 
 #[async_trait]
-impl FromRequestParts<AppState> for OptionalExtractAuth {
+impl FromRequestParts<AppState> for ExtractOptionalActivatedAuth {
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        match logged_in(parts, state).await? {
+            Some((user_id, activated)) => {
+                if activated {
+                    Ok(Self(Some(user_id)))
+                } else {
+                    Err((StatusCode::UNAUTHORIZED, String::from("activated")))
+                }
+            }
+            None => Ok(Self(None)),
+        }
+    }
+}
+
+pub struct ExtractOptionalAuth(pub Option<(i32, bool)>);
+
+#[async_trait]
+impl FromRequestParts<AppState> for ExtractOptionalAuth {
     type Rejection = (StatusCode, String);
 
     async fn from_request_parts(
@@ -20,9 +41,29 @@ impl FromRequestParts<AppState> for OptionalExtractAuth {
     }
 }
 
-// auth
+pub struct ExtractActivatedAuth(pub i32);
 
-pub struct ExtractAuth(pub i32);
+#[async_trait]
+impl FromRequestParts<AppState> for ExtractActivatedAuth {
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let (user_id, activated) = logged_in(parts, state)
+            .await?
+            .ok_or((StatusCode::UNAUTHORIZED, String::from("Unauthorized")))?;
+
+        if activated {
+            Ok(Self(user_id))
+        } else {
+            Err((StatusCode::UNAUTHORIZED, String::from("activated")))
+        }
+    }
+}
+
+pub struct ExtractAuth(pub i32, pub bool);
 
 #[async_trait]
 impl FromRequestParts<AppState> for ExtractAuth {
@@ -32,17 +73,24 @@ impl FromRequestParts<AppState> for ExtractAuth {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        return Ok(Self(logged_in(parts, state).await?.ok_or((
-            StatusCode::UNAUTHORIZED,
-            String::from("Unauthorized"),
-        ))?));
+        let (user_id, activated) = logged_in(parts, state)
+            .await?
+            .ok_or((StatusCode::UNAUTHORIZED, String::from("unauthorized")))?;
+
+        if activated {
+            Ok(Self(user_id, activated))
+        } else {
+            Err((StatusCode::UNAUTHORIZED, String::from("unactivated")))
+        }
     }
 }
 
-async fn logged_in(
+
+
+pub async fn logged_in(
     parts: &mut Parts,
     state: &AppState,
-) -> Result<Option<i32>, (StatusCode, String)> {
+) -> Result<Option<(i32, bool)>, (StatusCode, String)> {
     let cookies = Cookies::from_request_parts(parts, state)
         .await
         .server_error()?;
@@ -61,12 +109,14 @@ async fn logged_in(
 
             match user_id {
                 Some(user_id) => {
-                    let username =
-                        sqlx::query!("SELECT username FROM users WHERE id = $1", user_id)
-                            .fetch_one(&state.pool)
-                            .await
-                            .server_error()?
-                            .username;
+                    let (username, activated) = sqlx::query!(
+                        "SELECT username, activated FROM users WHERE id = $1",
+                        user_id
+                    )
+                    .fetch_one(&state.pool)
+                    .await
+                    .map(|rec| (rec.username, rec.activated.unwrap_or_default()))
+                    .server_error()?;
 
                     tracing::debug!(
                         "found user in database with token. id: {}, username: {}.",
@@ -87,7 +137,7 @@ async fn logged_in(
                         Ok(_) => {
                             tracing::debug!("user (id: {}) is logged in.", user_id);
 
-                            return Ok(Some(user_id));
+                            return Ok(Some((user_id, activated)));
                         }
                         Err(e) => match e.kind() {
                             jsonwebtoken::errors::ErrorKind::ExpiredSignature

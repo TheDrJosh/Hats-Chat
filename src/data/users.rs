@@ -9,7 +9,8 @@ pub async fn init_user_tables(pool: &PgPool) -> anyhow::Result<()> {
         display_name TEXT,
         profile_picture BYTEA,
         email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL
+        password_hash TEXT NOT NULL,
+        activated BOOLEAN
     );"
     )
     .execute(pool)
@@ -24,11 +25,6 @@ pub async fn init_user_tables(pool: &PgPool) -> anyhow::Result<()> {
     )
     .execute(pool)
     .await?;
-
-    // can remove after fix of persistant cookie key
-    // sqlx::query!("DELETE FROM auth_tokens")
-    //     .execute(pool)
-    //     .await?;
 
     Ok(())
 }

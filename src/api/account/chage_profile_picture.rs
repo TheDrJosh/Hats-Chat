@@ -5,12 +5,12 @@ use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 
 use crate::{
     data::app_state::AppState,
-    utils::{auth_layer::ExtractAuth, ToServerError},
+    utils::{auth_layer::ExtractActivatedAuth, ToServerError},
 };
 
 pub async fn change_display_name(
     State(state): State<AppState>,
-    ExtractAuth(user_id): ExtractAuth,
+    ExtractActivatedAuth(user_id): ExtractActivatedAuth,
     mut multipart: Multipart,
 ) -> Result<HeaderMap, (StatusCode, String)> {
     tracing::debug!("starting update to profile picture for user({user_id}");

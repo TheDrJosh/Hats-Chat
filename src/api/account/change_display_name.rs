@@ -1,7 +1,7 @@
 use axum::{extract::State, Form};
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 
-use crate::{data::app_state::AppState, utils::{ToServerError, auth_layer::ExtractAuth}};
+use crate::{data::app_state::AppState, utils::{ToServerError, auth_layer::ExtractActivatedAuth}};
 
 #[derive(serde::Deserialize)]
 pub struct ChangeDisplayNameForm {
@@ -10,7 +10,7 @@ pub struct ChangeDisplayNameForm {
 
 pub async fn change_display_name(
     State(state): State<AppState>,
-    ExtractAuth(user_id): ExtractAuth,
+    ExtractActivatedAuth(user_id): ExtractActivatedAuth,
     Form(form): Form<ChangeDisplayNameForm>,
 ) -> Result<HeaderMap, (StatusCode, String)> {
     tracing::debug!("display nane change for user ({})", user_id);

@@ -4,7 +4,7 @@ use http::StatusCode;
 
 use crate::{
     data::app_state::AppState,
-    utils::{username::Username, ToServerError, auth_layer::ExtractAuth},
+    utils::{username::Username, ToServerError, auth_layer::ExtractActivatedAuth},
 };
 
 pub async fn find_friend_modal() -> FindFriendModalTemplate {
@@ -22,7 +22,7 @@ pub struct FindFriendForm {
 
 pub async fn find_friend_list(
     State(state): State<AppState>,
-    ExtractAuth(user_id): ExtractAuth,
+    ExtractActivatedAuth(user_id): ExtractActivatedAuth,
     Form(form): Form<FindFriendForm>,
 ) -> Result<FindFriendListTemplate, (StatusCode, String)> {
     let search = form.search;

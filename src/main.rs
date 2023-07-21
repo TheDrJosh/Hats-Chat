@@ -10,11 +10,12 @@ use axum::{
 };
 use data::app_state::AppState;
 use http::{header, HeaderMap, HeaderValue, StatusCode};
+use lettre::{transport::smtp::authentication::Credentials, SmtpTransport};
 use tokio::sync::watch;
 use tower_cookies::{CookieManagerLayer, Cookies, Key};
 use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
-use utils::{auth_layer::OptionalExtractAuth, ToServerError};
+use utils::{auth_layer::{ExtractOptionalActivatedAuth, ExtractOptionalAuth}, ToServerError};
 
 use crate::{
     app::find_friend::{find_friend_list, find_friend_modal},
@@ -96,11 +97,35 @@ async fn main() {
         }
     };
 
+    let email_username = match dotenvy::var("EMAIL_USERNAME") {
+        Ok(email_username) => email_username,
+        Err(error) => {
+            tracing::error!("Failed to get email username from .env with error ({error})");
+            return;
+        }
+    };
+
+    let email_password = match dotenvy::var("EMAIL_PASSWORD") {
+        Ok(email_password) => email_password,
+        Err(error) => {
+            tracing::error!("Failed to get email username from .env with error ({error})");
+            return;
+        }
+    };
+
+    let email_credentials = Credentials::new(email_username, email_password);
+
+    let mailer = SmtpTransport::relay("smtp.gmail.com")
+        .unwrap()
+        .credentials(email_credentials)
+        .build();
+
     let app_state = Arc::new(AppStateInner {
         pool,
         jws_key,
         cookie_key: Key::from(&cookie_key_master),
         message_sent: sender,
+        mailer,
     });
 
     let app = Router::new()
@@ -132,10 +157,16 @@ async fn main() {
 
 async fn handler(
     State(state): State<AppState>,
-    OptionalExtractAuth(user_id): OptionalExtractAuth,
+    ExtractOptionalAuth(user_id): ExtractOptionalAuth,
 ) -> Result<Result<Base, LandingPageTemplate>, (StatusCode, String)> {
     match user_id {
-        Some(user_id) => Ok(Ok(app::main(state, user_id, None).await?)),
+        Some((user_id, activated)) => {
+            if activated {
+                Ok(Ok(app::main(state, user_id, None).await?))
+            } else {
+                todo!()
+            }
+        },
         None => Ok(Err(LandingPageTemplate)),
     }
 }
@@ -147,18 +178,18 @@ struct LandingPageTemplate;
 async fn handler_chat(
     Path(recipient): Path<String>,
     State(state): State<AppState>,
-    OptionalExtractAuth(user_id): OptionalExtractAuth,
+    ExtractOptionalAuth(user_id): ExtractOptionalAuth,
 ) -> Result<Result<impl IntoResponse, Redirect>, (StatusCode, String)> {
     tracing::debug!("handle chat");
     match user_id {
-        Some(user_id) => Ok(Ok(app::main(state, user_id, Some(recipient)).await?)),
+        Some((user_id, _)) => Ok(Ok(app::main(state, user_id, Some(recipient)).await?)),
         None => Ok(Err(Redirect::to("/"))),
     }
 }
 
 async fn login(
     headers: HeaderMap,
-    OptionalExtractAuth(user_id): OptionalExtractAuth,
+    ExtractOptionalAuth(user_id): ExtractOptionalAuth,
 ) -> Result<Result<LogInTemplate, Redirect>, (StatusCode, String)> {
     if headers
         .get("HX-Request")
@@ -187,7 +218,7 @@ impl LogInTemplate {
 
 async fn signup(
     headers: HeaderMap,
-    OptionalExtractAuth(user_id): OptionalExtractAuth,
+    ExtractOptionalAuth(user_id): ExtractOptionalAuth,
 ) -> Result<Result<SignUpTemplate, Redirect>, (StatusCode, String)> {
     if headers
         .get("HX-Request")
