@@ -5,7 +5,7 @@
       hx-target="#modal-holder" hx-get="/inner/empty">&times;</span>
     <h1 class="text-xl font-medium mb-5">Find a friend</h1>
     <input name="search" type="search" class="w-full h-10 p-2 rounded bg-cyan-50 dark:bg-slate-400 mb-3"
-      hx-target="#find-friend-list" hx-post="/inner/modal/list">
+      hx-target="#find-friend-list" hx-post="/inner/modal/list" hx-trigger="keyup changed delay:500ms">
     <div class="overflow-scroll h-full">
       <ol id="find-friend-list"></ol>
     </div>
