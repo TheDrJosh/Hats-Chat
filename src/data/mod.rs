@@ -12,7 +12,7 @@ pub async fn database_init() -> anyhow::Result<PgPool> {
 }
 
 pub async fn init_tables(pool: &PgPool) -> anyhow::Result<()> {
-    init_user_tables(&pool).await?;
-    init_chat_table(&pool).await?;
+    init_user_tables(pool).await?;
+    init_chat_table(pool).await?;
     Ok(())
 }

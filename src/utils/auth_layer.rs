@@ -85,8 +85,6 @@ impl FromRequestParts<AppState> for ExtractAuth {
     }
 }
 
-
-
 pub async fn logged_in(
     parts: &mut Parts,
     state: &AppState,
@@ -137,7 +135,7 @@ pub async fn logged_in(
                         Ok(_) => {
                             tracing::debug!("user (id: {}) is logged in.", user_id);
 
-                            return Ok(Some((user_id, activated)));
+                            Ok(Some((user_id, activated)))
                         }
                         Err(e) => match e.kind() {
                             jsonwebtoken::errors::ErrorKind::ExpiredSignature
@@ -148,7 +146,7 @@ pub async fn logged_in(
                                 );
 
                                 private_cookies.remove(cookie_token);
-                                return Ok(None);
+                                Ok(None)
                             }
                             _ => Err(e).server_error()?,
                         },
@@ -159,13 +157,13 @@ pub async fn logged_in(
 
                     private_cookies.remove(cookie_token);
 
-                    return Ok(None);
+                    Ok(None)
                 }
             }
         }
         None => {
             tracing::debug!("didn't find auth cookie.");
-            return Ok(None);
+            Ok(None)
         }
     }
 }

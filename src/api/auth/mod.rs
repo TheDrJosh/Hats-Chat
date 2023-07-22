@@ -9,7 +9,7 @@ mod login;
 mod logout;
 mod signup;
 
-pub const AUTH_COOKIE_NAME: &'static str = "web_chat_app_token";
+pub const AUTH_COOKIE_NAME: &str = "web_chat_app_token";
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Claim {
@@ -32,7 +32,7 @@ pub async fn make_jwt_token(
 ) -> anyhow::Result<String> {
     let claim = Claim {
         sub: username,
-        exp: (chrono::Utc::now() + chrono::Duration::minutes(30)).timestamp() as usize,
+        exp: (chrono::Utc::now() + chrono::Duration::days(7)).timestamp() as usize,
     };
 
     let token = jsonwebtoken::encode(
@@ -54,7 +54,7 @@ pub async fn make_jwt_token(
     cookies.private(&state.cookie_key).add(
         Cookie::build(AUTH_COOKIE_NAME, token.clone())
             .path("/")
-            .expires(OffsetDateTime::now_utc().checked_add(Duration::minutes(30)))
+            .expires(OffsetDateTime::now_utc().checked_add(Duration::days(7)))
             .finish(),
     );
 

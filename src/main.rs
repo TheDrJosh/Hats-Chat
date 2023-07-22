@@ -15,7 +15,7 @@ use tokio::sync::watch;
 use tower_cookies::{CookieManagerLayer, Cookies, Key};
 use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
-use utils::{auth_layer::{ExtractOptionalActivatedAuth, ExtractOptionalAuth}, ToServerError};
+use utils::{auth_layer::ExtractOptionalAuth, ToServerError};
 
 use crate::{
     app::find_friend::{find_friend_list, find_friend_modal},
@@ -151,7 +151,6 @@ async fn main() {
         .await
     {
         tracing::error!("Failed to launch server with error ({error})");
-        return;
     }
 }
 
@@ -166,7 +165,7 @@ async fn handler(
             } else {
                 todo!()
             }
-        },
+        }
         None => Ok(Err(LandingPageTemplate)),
     }
 }
@@ -224,13 +223,11 @@ async fn signup(
         .get("HX-Request")
         .is_some_and(|header| header == "true")
     {
-        return Ok(Ok(SignUpTemplate::default()));
+        Ok(Ok(SignUpTemplate::default()))
+    } else if user_id.is_some() {
+        Ok(Err(Redirect::to("/")))
     } else {
-        if user_id.is_some() {
-            return Ok(Err(Redirect::to("/")));
-        } else {
-            return Ok(Ok(SignUpTemplate::default()));
-        }
+        Ok(Ok(SignUpTemplate::default()))
     }
 }
 

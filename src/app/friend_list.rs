@@ -45,6 +45,7 @@ pub async fn get_friends(user_id: i32, pool: &PgPool) -> anyhow::Result<Vec<i32>
     .into_iter()
     .map(|rec| (rec.recipient_id, rec.sent_at))
     .collect::<Vec<_>>();
+
     friends_vec.append(
         &mut sqlx::query!(
             "SELECT sender_id, sent_at FROM chat_messages WHERE recipient_id = $1",
@@ -57,16 +58,16 @@ pub async fn get_friends(user_id: i32, pool: &PgPool) -> anyhow::Result<Vec<i32>
         .collect(),
     );
 
-    let mut friends_map = HashMap::new();
+    let mut friends_map: HashMap<i32, Vec<time::PrimitiveDateTime>> = HashMap::new();
 
     for (friend_id, time) in friends_vec {
-        if !friends_map.contains_key(&friend_id) {
-            friends_map.insert(friend_id, vec![time]);
-        } else {
-            friends_map
-                .get_mut(&friend_id)
-                .expect("map should contain key at this point")
-                .push(time);
+        match friends_map.get_mut(&friend_id) {
+            Some(friend) => {
+                friend.push(time);
+            }
+            None => {
+                friends_map.insert(friend_id, vec![time]);
+            }
         }
     }
 
@@ -83,7 +84,7 @@ pub async fn get_friends(user_id: i32, pool: &PgPool) -> anyhow::Result<Vec<i32>
         })
         .collect::<Vec<_>>();
 
-    friends_and_time.sort_by(|a, b| b.1.cmp(&a.1));
+    friends_and_time.sort_by(|a, b| b.1.cmp(a.1));
 
     let friends = friends_and_time
         .into_iter()
