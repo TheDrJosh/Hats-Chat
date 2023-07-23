@@ -2,13 +2,14 @@
 
 ## Active
 
-## Later
-
 - use tailwind theming in a color revamp
   - better light mode
 - UI revamp
   - landing page revamp
   - improve no chat selected screen
+
+## Later
+
 - use docker compose
 - refactor to better sql
 - use sql notify for multi node architecture
