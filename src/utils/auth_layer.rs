@@ -127,7 +127,8 @@ pub async fn logged_in(
 
                     let res = jsonwebtoken::decode::<Claim>(
                         cookie_token.value(),
-                        &jsonwebtoken::DecodingKey::from_secret(state.jws_key.as_bytes()),
+                        &jsonwebtoken::DecodingKey::from_base64_secret(&state.jws_key)
+                            .server_error()?,
                         &validation,
                     );
 
@@ -139,7 +140,8 @@ pub async fn logged_in(
                         }
                         Err(e) => match e.kind() {
                             jsonwebtoken::errors::ErrorKind::ExpiredSignature
-                            | jsonwebtoken::errors::ErrorKind::InvalidSubject => {
+                            | jsonwebtoken::errors::ErrorKind::InvalidSubject
+                            | jsonwebtoken::errors::ErrorKind::InvalidSignature => {
                                 tracing::debug!(
                                     "user (id: {}) submited invalid jwt token.",
                                     user_id

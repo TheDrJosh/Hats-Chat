@@ -28,17 +28,17 @@ pub async fn change_display_name(
             let data = field.bytes().await.server_error()?;
 
             if name != "file" {
-                tracing::debug!("unexpect paramater name got ({name})");
+                tracing::debug!("unexpected parameter name got ({name})");
                 Err((StatusCode::BAD_REQUEST, String::from("Bad Request")))?;
             }
 
             if !content_type.starts_with("image/") {
-                tracing::debug!("unexpect content type got ({content_type})");
+                tracing::debug!("unexpected content type got ({content_type})");
                 Err((StatusCode::BAD_REQUEST, String::from("Bad Request")))?;
             }
 
             if multipart.next_field().await.server_error()?.is_some() {
-                tracing::debug!("unexpect got second part");
+                tracing::debug!("unexpected got second part");
                 Err((StatusCode::BAD_REQUEST, String::from("Bad Request")))?;
             }
 

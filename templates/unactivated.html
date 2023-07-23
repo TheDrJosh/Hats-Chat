@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hats Chat</title>
+    <meta name="description" content="An example chat app built with my HATS web stack.">
+    <meta name="author" content="TheDrJosh">
+    <link rel="icon" href="/assets/favicon.ico">
+    <link href="/assets/output.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.2"
+        integrity="sha384-L6OqL9pRWyyFU3+/bjdSri+iIphTN/bvYyM37tICVyOJkWZLpP2vGn6VUEXgzg6h"
+        crossorigin="anonymous"></script>
+</head>
+
+<body class="flex w-screen h-screen bg-cyan-600 dark:bg-slate-700 dark:text-white">
+    <div class="flex flex-col items-center bg-cyan-400 dark:bg-slate-900 rounded-xl w-3/4 h-3/4 m-auto">
+        <img src="/assets/icon.avif" alt="icon"
+            class="w-12 h-12 m-2 absolute top-0 left-0 md:w-64 md:h-64 md:m-0 md:mt-auto md:static">
+        <h1 class="mt-auto text-4xl font-black tracking-tighter md:mt-5 text-center ">Hats Chat</h1>
+
+        <h2 class="mt-auto text-2xl font-black tracking-tighter md:mt-5 text-center ">Activate your account with by
+            confirming your email</h2>
+
+        <button class="mt-20 m-auto bg-cyan-200 dark:bg-slate-600 px-5 py-3 rounded"
+            hx-post="/confirm/{{ username.username() }}/resend" hx-swap="none">Resend Confirmation Email</button>
+    </div>
+</body>
+
+</html>

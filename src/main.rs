@@ -15,16 +15,17 @@ use tokio::sync::watch;
 use tower_cookies::{CookieManagerLayer, Cookies, Key};
 use tower_http::services::ServeDir;
 use tracing_subscriber::prelude::*;
-use utils::{auth_layer::ExtractOptionalAuth, ToServerError};
+use utils::{auth_layer::ExtractOptionalAuth, username::Username, ToServerError};
 
 use crate::{
     app::find_friend::{find_friend_list, find_friend_modal},
-    data::app_state::AppStateInner,
+    data::app_state::AppStateInner, activate::activate_routes,
 };
 
 mod api;
 mod app;
 mod data;
+mod activate;
 mod utils;
 
 #[tokio::main]
@@ -138,6 +139,7 @@ async fn main() {
         .nest_service("/assets", ServeDir::new("assets/"))
         .route("/inner/modal/list", post(find_friend_list))
         .route("/account/:username", get(app::account::account_route))
+        .nest("/confirm", activate_routes())
         .fallback(not_found)
         .with_state(app_state)
         .layer(CookieManagerLayer::new())
@@ -157,17 +159,26 @@ async fn main() {
 async fn handler(
     State(state): State<AppState>,
     ExtractOptionalAuth(user_id): ExtractOptionalAuth,
-) -> Result<Result<Base, LandingPageTemplate>, (StatusCode, String)> {
+) -> Result<Result<Base, Result<LandingPageTemplate, UnactivatedTemplate>>, (StatusCode, String)> {
     match user_id {
         Some((user_id, activated)) => {
             if activated {
                 Ok(Ok(app::main(state, user_id, None).await?))
             } else {
-                todo!()
+                let username = Username::new_from_id(user_id, &state.pool)
+                    .await
+                    .server_error()?;
+                Ok(Err(Err(UnactivatedTemplate { username })))
             }
         }
-        None => Ok(Err(LandingPageTemplate)),
+        None => Ok(Err(Ok(LandingPageTemplate))),
     }
+}
+
+#[derive(Template)]
+#[template(path = "unactivated.html")]
+struct UnactivatedTemplate {
+    username: Username,
 }
 
 #[derive(Template)]

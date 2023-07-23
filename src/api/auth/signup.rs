@@ -5,7 +5,7 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use tower_cookies::Cookies;
 
-use crate::{data::app_state::AppState, utils::ToServerError, SignUpTemplate};
+use crate::{data::app_state::AppState, utils::ToServerError, SignUpTemplate, activate::send_confirmation_email};
 
 use super::make_jwt_token;
 
@@ -77,6 +77,8 @@ pub async fn signup(
     .await
     .server_error()?
     .id;
+
+    send_confirmation_email(user_id, state.clone()).await.server_error()?;
 
     make_jwt_token(user_id, form.username, &cookies, state)
         .await

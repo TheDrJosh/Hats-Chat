@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hats Chat</title>
+    <meta name="description" content="An example chat app built with my HATS web stack.">
+    <meta name="author" content="TheDrJosh">
+    <link rel="icon" href="/assets/favicon.ico">
+    
+</head>
+
+<body>
+    <div>
+        <h1>Hello {{ username.display_name() }}</h1>
+        <a href="http://localhost:3000/confirm/{{ username.username() }}/{{ token }}">Click to Activate Account</a>
+    </div>
+</body>
+
+</html>

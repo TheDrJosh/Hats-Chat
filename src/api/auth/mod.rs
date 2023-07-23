@@ -38,7 +38,7 @@ pub async fn make_jwt_token(
     let token = jsonwebtoken::encode(
         &Header::default(),
         &claim,
-        &jsonwebtoken::EncodingKey::from_secret(state.jws_key.as_bytes()),
+        &jsonwebtoken::EncodingKey::from_base64_secret(&state.jws_key)?,
     )?;
 
     sqlx::query!(
