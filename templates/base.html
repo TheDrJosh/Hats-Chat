@@ -16,19 +16,25 @@
 </head>
 
 <body class="w-screen h-screen flex flex-col dark:text-white overflow-hidden">
-    <nav class="flex flex-row bg-cyan-400 dark:bg-slate-800 p-3">
+    <nav class="flex flex-row p-3 header-color">
         <div class="flex-initial flex">
             <img src="/assets/icon.avif" class="w-16 h-16" alt="">
             <h1 class="col-start-2 self-center ml-5 text-4xl font-bold tracking-tight">Hats Chat</h1>
         </div>
         <div class="flex-1"></div>
         <div class="flex flex-col group mr-1">
-            <img id="profile_pic" src="/profile_pictures/{{ base_info.username }}"
-                class="w-12 h-12 flex-initial justify-self-end self-center mr-1 rounded-full" alt="profile-picture">
-            <span for="profile_pic" class="text-center">{{ base_info.display_name }}</span>
-            <div class="hidden absolute bg-slate-400 w-28 z-10 group-hover:block -translate-x-6 translate-y-[4.5rem] rounded">
-                <a class="px-3 py-4 block hover:bg-slate-500 rounded text-center" href="/account/{{ base_info.username }}">Account</a>
-                <span class="px-3 py-4 block hover:bg-slate-500 rounded cursor-pointer text-center" hx-post="/api/auth/user/logout">Sign Out</span>
+            <div class="flex flex-col">
+                <img id="profile_pic" src="/profile_pictures/{{ base_info.username }}"
+                    class="w-12 h-12 flex-initial justify-self-end self-center mr-1 rounded-full" alt="profile-picture">
+                <span for="profile_pic" class="text-center">{{ base_info.display_name }}</span>
+            </div>
+
+            <div class="hidden alt-color w-28 z-10 group-hover:block rounded -mb-28 -mr-4 -ml-4">
+                <a class="px-3 py-4 block bg-opacity-0 hover:bg-black hover:bg-opacity-50 rounded text-center"
+                    href="/account/{{ base_info.username }}">Account</a>
+                <span
+                    class="px-3 py-4 block bg-opacity-0 hover:bg-black hover:bg-opacity-50 rounded cursor-pointer text-center"
+                    hx-post="/api/auth/user/logout">Sign Out</span>
             </div>
         </div>
     </nav>

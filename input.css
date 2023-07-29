@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+    .header-color {
+        @apply bg-cyan-400 dark:bg-slate-800;
+    }
+    
+    .alt-color {
+        @apply bg-cyan-600 dark:bg-slate-700;
+    }
+
+    .base-color {
+        @apply bg-cyan-200 dark:bg-slate-600;
+    }
+
+    .button-color {
+        @apply bg-cyan-500 dark:bg-slate-800 hover:bg-cyan-700 dark:hover:bg-slate-600;
+    }
+
+    .text-box-color {
+        @apply bg-cyan-50 dark:bg-slate-400;
+    }
+}

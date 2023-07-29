@@ -1,4 +1,4 @@
-<div id="chat_window" class="flex-1 bg-cyan-200 dark:bg-slate-600 flex flex-col overflow-hidden w-full h-full">
+<div id="chat_window" class="flex-1 base-color flex flex-col overflow-hidden w-full h-full">
     {% match chat_window_info %}
     {% when Some with (chat_window_info) %}
     <ol id="chat" class="flex flex-col-reverse m-3 overflow-auto h-fit flex-1" hx-ext="sse"
@@ -9,8 +9,8 @@
     </ol>
     <form class="bg-cyan-300 dark:bg-slate-500 px-5 py-3 flex flex-row"
         hx-post="/api/chat/{{chat_window_info.recipient_name}}" hx-swap="none">
-        <input type="text" class="rounded-lg w-full bg-cyan-50 dark:bg-slate-400 p-1" name="message">
-        <button type="submit" class="m-1 p-1 bg-cyan-50 dark:bg-slate-400 rounded-lg">send</button>
+        <input type="text" class="rounded-lg w-full text-box-color p-1" name="message">
+        <button type="submit" class="m-1 p-1 button-color rounded-lg">send</button>
     </form>
     {% when None %}
     <h1 class="m-auto text-9xl font-bold tracking-tight">Not in chat!</h1>

@@ -10,6 +10,7 @@
 
 ## Later
 
+- others account view
 - use docker compose
 - refactor to better sql
 - use sql notify for multi node architecture

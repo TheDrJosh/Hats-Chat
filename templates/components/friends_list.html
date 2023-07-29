@@ -1,4 +1,4 @@
-<aside id="sidebar" aria-label="Sidebar" class="bg-cyan-600 dark:bg-slate-700 flex-initial w-60 h-full overflow-clip flex flex-col">
+<aside id="sidebar" aria-label="Sidebar" class="alt-color flex-initial w-60 h-full overflow-clip flex flex-col">
     <ul class="flex flex-col mt-1 overflow-auto h-fit flex-1">
         {% for friend in friend_list_info.friends %}
         <li>
@@ -14,7 +14,7 @@
         {% endfor %}
     </ul>
     <div class="bg-slate-700 w-full flex flex-col">
-        <button class="m-2 p-2 bg-cyan-50 dark:bg-slate-800 rounded-lg text-center" hx-get="/inner/modal" hx-target="#modal-holder">
+        <button class="m-2 p-2 button-color rounded-lg text-center" hx-get="/inner/modal" hx-target="#modal-holder">
             Find a friend
         </button>
     </div>
