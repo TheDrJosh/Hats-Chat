@@ -13,6 +13,11 @@
         <button type="submit" class="m-1 p-1 button-color rounded-lg">send</button>
     </form>
     {% when None %}
-    <h1 class="m-auto text-9xl font-bold tracking-tight">Not in chat!</h1>
+    <div class="flex flex-col content-center m-auto w-96">
+        <h1 class="text-5xl font-bold tracking-tight m-4 text-center">Get Started!</h1>
+        <p class="text-center m-4">If you have already chatted you can resume chatting with the bar on the left.</p>
+        <span class="text-center m-4">or</span>
+        <p class="text-center m-4">If your new or want to talk to someone new click the "find a friend" button in the bottom left.</p>
+    </div>
     {% endmatch %}
 </div>

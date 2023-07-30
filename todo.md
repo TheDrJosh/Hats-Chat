@@ -2,22 +2,19 @@
 
 ## Active
 
-- use tailwind theming in a color revamp
-  - better light mode
-- UI revamp
-  - landing page revamp
-  - improve no chat selected screen
-
 ## Later
 
-- others account view
 - use docker compose
 - refactor to better sql
 - use sql notify for multi node architecture
-- better logging
+- UI revamp
+  - landing page revamp
+  - improve no chat selected screen
+  - better light mode
 
 ## Maybes
 
+- better logging
 - add "you just activated your account" page
 - multi line messages
 - notification system

@@ -22,4 +22,8 @@
     .text-box-color {
         @apply bg-cyan-50 dark:bg-slate-400;
     }
+
+    .sub-text-color {
+        @apply text-cyan-50 dark:text-slate-400
+    }
 }
